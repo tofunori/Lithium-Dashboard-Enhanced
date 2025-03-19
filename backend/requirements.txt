@@ -2,7 +2,7 @@ Django==5.0.2
 django-cors-headers==4.3.1
 djangorestframework==3.14.0
 django-environ==0.11.2
-psycopg2-binary==2.9.9
+# psycopg2-binary==2.9.9 - Removed temporarily due to build issues on Windows
 # Pillow removed temporarily due to build issues on Windows
 pytz==2024.1
 gunicorn==21.2.0
