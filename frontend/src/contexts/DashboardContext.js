@@ -84,7 +84,7 @@ export const DashboardProvider = ({ children }) => {
       // Filter by minimum capacity (simplified implementation)
       if (filters.minCapacity > 0) {
         const capacityStr = refinery.production || '';
-        const capacityMatch = capacityStr.match(/\\d+/);
+        const capacityMatch = capacityStr.match(/\d+/);
         const capacity = capacityMatch ? parseInt(capacityMatch[0], 10) : 0;
         
         if (capacity < filters.minCapacity) {
