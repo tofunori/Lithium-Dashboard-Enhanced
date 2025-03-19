@@ -1,0 +1,45 @@
+{
+  "refineries": [
+    {
+      "id": 1,
+      "name": "EcoBatt Montréal",
+      "location": "Montréal, QC",
+      "country": "Canada",
+      "coordinates": [45.5017, -73.5673],
+      "status": "Opérationnel",
+      "production": "5000 tpa",
+      "processing": "Hydrométallurgie",
+      "website": "https://example.com/ecobatt"
+    },
+    {
+      "id": 2,
+      "name": "GreenLi Detroit",
+      "location": "Detroit, MI",
+      "country": "USA",
+      "coordinates": [42.3314, -83.0458],
+      "status": "En construction",
+      "production": "7500 tpa",
+      "processing": "Pyrométallurgie",
+      "website": "https://example.com/greenli"
+    },
+    {
+      "id": 3,
+      "name": "BatteryLoop Vancouver",
+      "location": "Vancouver, BC",
+      "country": "Canada",
+      "coordinates": [49.2827, -123.1207],
+      "status": "Planifié",
+      "production": "3000 tpa",
+      "processing": "Hybride",
+      "website": "https://example.com/batteryloop"
+    }
+  ],
+  "status_colors": {
+    "Opérationnel": "#4CAF50",
+    "En construction": "#FF9800",
+    "Planifié": "#2196F3",
+    "Approuvé": "#9C27B0",
+    "En pause": "#F44336"
+  },
+  "chart_colors": ["#4a6bff", "#ff7043", "#ffca28", "#66bb6a", "#ab47bc"]
+}
