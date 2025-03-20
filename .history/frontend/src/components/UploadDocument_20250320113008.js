@@ -67,7 +67,7 @@ const documentFormats = [
 
 const UploadDocument = ({ onUploadSuccess }) => {
   const { t } = useTranslation();
-  const { isAuthenticated } = useAuth();
+  const { user } = useAuth();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const { addDocument } = useDocuments();
@@ -104,7 +104,7 @@ const UploadDocument = ({ onUploadSuccess }) => {
   });
   
   // Vérification de l'utilisateur après déclaration des hooks
-  if (!isAuthenticated) {
+  if (!user) {
     return (
       <Paper sx={{ p: 3, my: 2, textAlign: 'center' }}>
         <Typography variant="h6" gutterBottom>
