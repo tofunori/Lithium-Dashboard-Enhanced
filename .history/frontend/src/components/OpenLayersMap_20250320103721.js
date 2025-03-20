@@ -16,7 +16,6 @@ import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import HeightIcon from '@mui/icons-material/Height';
 import LayersIcon from '@mui/icons-material/Layers';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import TextFieldsIcon from '@mui/icons-material/TextFields';
 import { useSettings } from '../App';
 import useTranslation from '../hooks/useTranslation';
 
@@ -117,7 +116,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
   const [mapType, setMapType] = useState('standard'); // standard, satellite, terrain
   const [statusFilters, setStatusFilters] = useState(Object.keys(statusColors).filter(s => s !== 'default')); // Tous les statuts sont activés par défaut
   const [showFilters, setShowFilters] = useState(false);
-  const [showLabels, setShowLabels] = useState(false); // Par défaut, les labels sont masqués
   
   const mapRef = useRef();
   const mapElement = useRef();
@@ -184,7 +182,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
     // Créer la couche vectorielle avec les points
     const vectorLayer = new VectorLayer({
       source: vectorSource,
-      style: function(feature) {
+      style: (feature) => {
         const production = feature.get('production');
         const status = feature.get('status');
         const color = statusColors[status] || statusColors.default;
@@ -203,9 +201,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
           rgba = `rgba(${r}, ${g}, ${b}, 0.7)`; // 0.7 = 70% d'opacité
         }
         
-        // Récupérer la valeur actuelle de showLabels depuis la couche
-        const layerShowLabels = vectorLayer.get('showLabels');
-        
         return new Style({
           image: new CircleStyle({
             radius: size,
@@ -217,33 +212,22 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               width: 1 // Contour plus fin
             })
           }),
-          // Ajouter le nom comme texte seulement si showLabels est activé
-          text: layerShowLabels ? new Text({
+          // Ajouter le nom comme texte
+          text: new Text({
             text: feature.get('name'),
             offsetY: -size - 10,
-            font: 'normal 12px Roboto, "Helvetica Neue", sans-serif',
-            padding: [2, 3, 2, 3],
+            font: 'bold 12px Arial',
             fill: new Fill({
               color: '#333'
             }),
             stroke: new Stroke({
-              color: 'rgba(255, 255, 255, 0.8)',
-              width: 2
-            }),
-            backgroundFill: new Fill({
-              color: 'rgba(255, 255, 255, 0.7)'
-            }),
-            backgroundStroke: new Stroke({
-              color: 'rgba(0, 0, 0, 0.1)',
-              width: 1
+              color: '#FFF',
+              width: 3
             })
-          }) : undefined
+          })
         });
       }
     });
-    
-    // Définir la propriété showLabels initiale
-    vectorLayer.set('showLabels', showLabels);
     
     // Créer la carte OpenLayers
     const map = new Map({
@@ -289,25 +273,25 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
         
         // Générer le contenu HTML du popup avec un style amélioré
         const content = `
-          <div style="font-family: 'Roboto', 'Helvetica Neue', sans-serif; padding: 5px;">
-            <h3 style="margin: 0 0 5px 0; font-size: 18px; color: #1976d2; font-weight: 500;">${name}</h3>
-            <p style="color: #444; margin: 0 0 10px 0; font-size: 13px; font-weight: 400;">
+          <div style="font-family: Arial, sans-serif; padding: 5px;">
+            <h3 style="margin: 0 0 5px 0; font-size: 18px; color: #1976d2;">${name}</h3>
+            <p style="color: #444; margin: 0 0 10px 0; font-size: 13px;">
               <strong>${location}</strong>
               ${country ? ` - ${country}` : ''}
             </p>
             <div style="margin: 10px 0; padding: 8px; background-color: #f5f5f5; border-radius: 4px;">
-              <p style="margin: 5px 0; font-size: 13px; font-weight: 400;">
+              <p style="margin: 5px 0; font-size: 13px;">
                 <strong>Statut:</strong> 
                 <span style="display: inline-block; padding: 2px 6px; border-radius: 3px; background-color: ${statusColors[status] || statusColors.default}; color: white; font-size: 12px; margin-left: 5px;">
                   ${status}
                 </span>
               </p>
-              ${production ? `<p style="margin: 5px 0; font-size: 13px; font-weight: 400;"><strong>Production:</strong> ${production}</p>` : ''}
-              ${description ? `<p style="margin: 5px 0; font-size: 13px; font-weight: 400;"><strong>Procédé:</strong> ${description}</p>` : ''}
+              ${production ? `<p style="margin: 5px 0; font-size: 13px;"><strong>Production:</strong> ${production}</p>` : ''}
+              ${description ? `<p style="margin: 5px 0; font-size: 13px;"><strong>Procédé:</strong> ${description}</p>` : ''}
             </div>
             <div style="margin-top: 12px; display: flex; justify-content: space-between; align-items: center;">
-              ${website ? `<a href="${website}" target="_blank" style="color: #1976d2; text-decoration: none; font-size: 12px; font-weight: 500;">Site web</a>` : '<span></span>'}
-              <a href="/fonderie/${id}" style="display: inline-block; padding: 5px 10px; background-color: #1976d2; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: 500;">Plus d'infos</a>
+              ${website ? `<a href="${website}" target="_blank" style="color: #1976d2; text-decoration: none; font-size: 12px;">Site web</a>` : '<span></span>'}
+              <a href="/fonderie/${id}" style="display: inline-block; padding: 5px 10px; background-color: #1976d2; color: white; text-decoration: none; border-radius: 4px; font-size: 12px; font-weight: bold;">Plus d'infos</a>
             </div>
           </div>
         `;
@@ -405,34 +389,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
     }
   }, [statusFilters, plants]);
   
-  // Mettre à jour lorsque les labels changent
-  useEffect(() => {
-    if (mapRef.current) {
-      console.log("Mise à jour des labels:", showLabels ? "Affichés" : "Masqués");
-      
-      const vectorLayers = mapRef.current.getLayers().getArray()
-        .filter(layer => layer instanceof VectorLayer);
-      
-      vectorLayers.forEach(layer => {
-        // Mettre à jour la propriété showLabels sur la couche
-        layer.set('showLabels', showLabels);
-        console.log("Propriété showLabels mise à jour sur la couche:", layer.get('showLabels'));
-        
-        // Forcer la mise à jour du style
-        layer.changed();
-        
-        // Mettre à jour chaque feature pour forcer le rendu des labels
-        const source = layer.getSource();
-        const features = source.getFeatures();
-        features.forEach(feature => {
-          feature.changed();
-        });
-      });
-      
-      mapRef.current.render();
-    }
-  }, [showLabels]);
-  
   // Gérer le redimensionnement
   useEffect(() => {
     if (mapRef.current) {
@@ -498,16 +454,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
       });
     
     vectorSource.addFeatures(features);
-    
-    // Assurez-vous que les couches vectorielles ont la bonne valeur showLabels
-    if (mapRef.current) {
-      const vectorLayers = mapRef.current.getLayers().getArray()
-        .filter(layer => layer instanceof VectorLayer);
-      
-      vectorLayers.forEach(layer => {
-        layer.set('showLabels', showLabels);
-      });
-    }
   };
   
   // Gérer le changement de hauteur
@@ -569,26 +515,12 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
         boxShadow: '0 2px 10px rgba(0, 0, 0, 0.08)'
       }}
     >
-      <Typography variant="subtitle2" sx={{ 
-        fontWeight: 500, 
-        mb: 1.5, 
-        borderBottom: '1px solid rgba(0, 0, 0, 0.08)', 
-        pb: 0.5,
-        fontFamily: '"Roboto", "Helvetica Neue", sans-serif',
-        fontSize: '0.95rem'
-      }}>
+      <Typography variant="subtitle2" sx={{ fontWeight: 500, mb: 1.5, borderBottom: '1px solid rgba(0, 0, 0, 0.08)', pb: 0.5 }}>
         Légende
       </Typography>
       
       {/* Légende des statuts */}
-      <Typography variant="caption" sx={{ 
-        display: 'block', 
-        mb: 1, 
-        fontWeight: 500,
-        fontFamily: '"Roboto", "Helvetica Neue", sans-serif',
-        fontSize: '0.78rem',
-        letterSpacing: '0.01em'
-      }}>
+      <Typography variant="caption" sx={{ display: 'block', mb: 1, fontWeight: 500 }}>
         Statuts (cliquez pour filtrer):
       </Typography>
       {Object.entries(statusColors)
@@ -643,29 +575,13 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
                   }
                 }} 
               />
-              <Typography variant="caption" sx={{ 
-                fontFamily: '"Roboto", "Helvetica Neue", sans-serif', 
-                fontSize: '0.78rem',
-                letterSpacing: '0.01em'
-              }}>
-                {status}
-              </Typography>
+              <Typography variant="caption">{status}</Typography>
             </Box>
           );
         })}
       
       {/* Légende de taille */}
-      <Typography variant="caption" sx={{ 
-        display: 'block', 
-        mt: 2, 
-        mb: 1, 
-        fontWeight: 500,
-        fontFamily: '"Roboto", "Helvetica Neue", sans-serif',
-        fontSize: '0.8rem',
-        letterSpacing: '0.01em'
-      }}>
-        Tailles (production):
-      </Typography>
+      <Typography variant="caption" sx={{ display: 'block', mt: 2, mb: 1, fontWeight: 500 }}>Tailles (production):</Typography>
       <Box sx={{ ml: 0.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.7 }}>
           <Box 
@@ -678,13 +594,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               mr: 1
             }} 
           />
-          <Typography variant="caption" sx={{ 
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif', 
-            fontSize: '0.78rem',
-            letterSpacing: '0.01em'
-          }}>
-            Très faible (&lt; 100)
-          </Typography>
+          <Typography variant="caption">Très faible (&lt; 100)</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.7 }}>
           <Box 
@@ -697,13 +607,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               mr: 1
             }} 
           />
-          <Typography variant="caption" sx={{ 
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif', 
-            fontSize: '0.78rem',
-            letterSpacing: '0.01em'
-          }}>
-            Faible (100 - 1 000)
-          </Typography>
+          <Typography variant="caption">Faible (100 - 1 000)</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.7 }}>
           <Box 
@@ -716,13 +620,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               mr: 1
             }} 
           />
-          <Typography variant="caption" sx={{ 
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif', 
-            fontSize: '0.78rem',
-            letterSpacing: '0.01em'
-          }}>
-            Moyenne (1 000 - 10 000)
-          </Typography>
+          <Typography variant="caption">Moyenne (1 000 - 10 000)</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.7 }}>
           <Box 
@@ -735,13 +633,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               mr: 1
             }} 
           />
-          <Typography variant="caption" sx={{ 
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif', 
-            fontSize: '0.78rem',
-            letterSpacing: '0.01em'
-          }}>
-            Élevée (10 000 - 100 000)
-          </Typography>
+          <Typography variant="caption">Élevée (10 000 - 100 000)</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.7 }}>
           <Box 
@@ -754,13 +646,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               mr: 1
             }} 
           />
-          <Typography variant="caption" sx={{ 
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif', 
-            fontSize: '0.78rem',
-            letterSpacing: '0.01em'
-          }}>
-            Très élevée (100 000 - 1M)
-          </Typography>
+          <Typography variant="caption">Très élevée (100 000 - 1M)</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center'}}>
           <Box 
@@ -773,13 +659,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               mr: 1
             }} 
           />
-          <Typography variant="caption" sx={{ 
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif', 
-            fontSize: '0.78rem',
-            letterSpacing: '0.01em'
-          }}>
-            Massive (&gt; 1M)
-          </Typography>
+          <Typography variant="caption">Massive (&gt; 1M)</Typography>
         </Box>
       </Box>
     </Paper>
@@ -819,46 +699,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
       
       {/* Contrôles de la carte */}
       <Box sx={{ position: 'absolute', bottom: 16, right: 16, zIndex: 1 }}>
-        <Tooltip title="Filtrer par statut">
-          <IconButton 
-            onClick={() => setShowFilters(!showFilters)}
-            sx={{ 
-              backgroundColor: 'white', 
-              boxShadow: '0 0 0 2px rgba(0, 0, 0, 0.1)',
-              '&:hover': { backgroundColor: '#f0f0f0' },
-              mr: 1,
-              // Highlight si des filtres sont actifs
-              ...(statusFilters.length < Object.keys(statusColors).filter(s => s !== 'default').length && {
-                color: '#1976d2',
-                border: '2px solid #1976d2',
-                '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.04)' }
-              })
-            }}
-          >
-            <FilterListIcon />
-          </IconButton>
-        </Tooltip>
-        
-        <Tooltip title="Afficher/masquer les noms">
-          <IconButton 
-            onClick={() => setShowLabels(!showLabels)}
-            sx={{ 
-              backgroundColor: 'white', 
-              boxShadow: '0 0 0 2px rgba(0, 0, 0, 0.1)',
-              '&:hover': { backgroundColor: '#f0f0f0' },
-              mr: 1,
-              // Highlight si les labels sont actifs
-              ...(showLabels && {
-                color: '#1976d2',
-                border: '2px solid #1976d2',
-                '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.04)' }
-              })
-            }}
-          >
-            <TextFieldsIcon />
-          </IconButton>
-        </Tooltip>
-      
         <Tooltip title="Changer le style de carte">
           <IconButton 
             onClick={() => {
@@ -905,103 +745,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
           </IconButton>
         </Tooltip>
       </Box>
-      
-      {/* Panneau de filtres */}
-      {showFilters && (
-        <Paper
-          sx={{
-            position: 'absolute',
-            top: 10,
-            right: 10,
-            p: 2,
-            zIndex: 1,
-            backgroundColor: 'rgba(255, 255, 255, 0.95)',
-            maxWidth: 250,
-            borderRadius: '8px',
-            boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
-          }}
-        >
-          <Typography variant="subtitle2" sx={{ 
-            fontWeight: 500, 
-            mb: 1.5,
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif',
-            fontSize: '0.95rem',
-            letterSpacing: '0.01em'
-          }}>
-            Filtrer par statut
-          </Typography>
-          
-          <FormGroup>
-            {Object.entries(statusColors)
-              .filter(([status]) => status !== 'default')
-              .map(([status, color]) => {
-                // Convertir la couleur hex en rgba
-                let rgba = color;
-                if (color.startsWith('#')) {
-                  const r = parseInt(color.slice(1, 3), 16);
-                  const g = parseInt(color.slice(3, 5), 16);
-                  const b = parseInt(color.slice(5, 7), 16);
-                  rgba = `rgba(${r}, ${g}, ${b}, 1)`;
-                }
-                
-                return (
-                  <FormControlLabel
-                    key={status}
-                    control={
-                      <Checkbox 
-                        checked={statusFilters.includes(status)} 
-                        onChange={() => handleFilterChange(status)} 
-                        sx={{
-                          color: rgba,
-                          '&.Mui-checked': {
-                            color: rgba,
-                          },
-                        }}
-                      />
-                    }
-                    label={status}
-                    sx={{
-                      '& .MuiFormControlLabel-label': {
-                        fontFamily: '"Roboto", "Helvetica Neue", sans-serif',
-                        fontSize: '0.85rem',
-                        fontWeight: 400
-                      }
-                    }}
-                  />
-                );
-              })
-            }
-          </FormGroup>
-          
-          <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 2 }}>
-            <Tooltip title="Sélectionner tous les statuts">
-              <IconButton 
-                size="small"
-                onClick={() => setStatusFilters(Object.keys(statusColors).filter(s => s !== 'default'))}
-                sx={{ 
-                  fontSize: '0.75rem',
-                  fontFamily: '"Roboto", "Helvetica Neue", sans-serif'
-                }}
-              >
-                Tout sélectionner
-              </IconButton>
-            </Tooltip>
-            
-            <Tooltip title="Désélectionner tous les statuts">
-              <IconButton 
-                size="small"
-                onClick={() => setStatusFilters([])}
-                sx={{ 
-                  fontSize: '0.75rem',
-                  fontFamily: '"Roboto", "Helvetica Neue", sans-serif'
-                }}
-              >
-                Tout effacer
-              </IconButton>
-            </Tooltip>
-          </Box>
-        </Paper>
-      )}
       
       {/* Curseur de hauteur */}
       {showHeightSlider && !isFullscreen && (

@@ -16,7 +16,6 @@ import FullscreenExitIcon from '@mui/icons-material/FullscreenExit';
 import HeightIcon from '@mui/icons-material/Height';
 import LayersIcon from '@mui/icons-material/Layers';
 import FilterListIcon from '@mui/icons-material/FilterList';
-import TextFieldsIcon from '@mui/icons-material/TextFields';
 import { useSettings } from '../App';
 import useTranslation from '../hooks/useTranslation';
 
@@ -117,7 +116,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
   const [mapType, setMapType] = useState('standard'); // standard, satellite, terrain
   const [statusFilters, setStatusFilters] = useState(Object.keys(statusColors).filter(s => s !== 'default')); // Tous les statuts sont activés par défaut
   const [showFilters, setShowFilters] = useState(false);
-  const [showLabels, setShowLabels] = useState(false); // Par défaut, les labels sont masqués
   
   const mapRef = useRef();
   const mapElement = useRef();
@@ -184,7 +182,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
     // Créer la couche vectorielle avec les points
     const vectorLayer = new VectorLayer({
       source: vectorSource,
-      style: function(feature) {
+      style: (feature) => {
         const production = feature.get('production');
         const status = feature.get('status');
         const color = statusColors[status] || statusColors.default;
@@ -203,9 +201,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
           rgba = `rgba(${r}, ${g}, ${b}, 0.7)`; // 0.7 = 70% d'opacité
         }
         
-        // Récupérer la valeur actuelle de showLabels depuis la couche
-        const layerShowLabels = vectorLayer.get('showLabels');
-        
         return new Style({
           image: new CircleStyle({
             radius: size,
@@ -217,33 +212,22 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               width: 1 // Contour plus fin
             })
           }),
-          // Ajouter le nom comme texte seulement si showLabels est activé
-          text: layerShowLabels ? new Text({
+          // Ajouter le nom comme texte
+          text: new Text({
             text: feature.get('name'),
             offsetY: -size - 10,
             font: 'normal 12px Roboto, "Helvetica Neue", sans-serif',
-            padding: [2, 3, 2, 3],
             fill: new Fill({
               color: '#333'
             }),
             stroke: new Stroke({
-              color: 'rgba(255, 255, 255, 0.8)',
-              width: 2
-            }),
-            backgroundFill: new Fill({
-              color: 'rgba(255, 255, 255, 0.7)'
-            }),
-            backgroundStroke: new Stroke({
-              color: 'rgba(0, 0, 0, 0.1)',
-              width: 1
+              color: '#FFF',
+              width: 3
             })
-          }) : undefined
+          })
         });
       }
     });
-    
-    // Définir la propriété showLabels initiale
-    vectorLayer.set('showLabels', showLabels);
     
     // Créer la carte OpenLayers
     const map = new Map({
@@ -405,34 +389,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
     }
   }, [statusFilters, plants]);
   
-  // Mettre à jour lorsque les labels changent
-  useEffect(() => {
-    if (mapRef.current) {
-      console.log("Mise à jour des labels:", showLabels ? "Affichés" : "Masqués");
-      
-      const vectorLayers = mapRef.current.getLayers().getArray()
-        .filter(layer => layer instanceof VectorLayer);
-      
-      vectorLayers.forEach(layer => {
-        // Mettre à jour la propriété showLabels sur la couche
-        layer.set('showLabels', showLabels);
-        console.log("Propriété showLabels mise à jour sur la couche:", layer.get('showLabels'));
-        
-        // Forcer la mise à jour du style
-        layer.changed();
-        
-        // Mettre à jour chaque feature pour forcer le rendu des labels
-        const source = layer.getSource();
-        const features = source.getFeatures();
-        features.forEach(feature => {
-          feature.changed();
-        });
-      });
-      
-      mapRef.current.render();
-    }
-  }, [showLabels]);
-  
   // Gérer le redimensionnement
   useEffect(() => {
     if (mapRef.current) {
@@ -498,16 +454,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
       });
     
     vectorSource.addFeatures(features);
-    
-    // Assurez-vous que les couches vectorielles ont la bonne valeur showLabels
-    if (mapRef.current) {
-      const vectorLayers = mapRef.current.getLayers().getArray()
-        .filter(layer => layer instanceof VectorLayer);
-      
-      vectorLayers.forEach(layer => {
-        layer.set('showLabels', showLabels);
-      });
-    }
   };
   
   // Gérer le changement de hauteur
@@ -655,17 +601,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
         })}
       
       {/* Légende de taille */}
-      <Typography variant="caption" sx={{ 
-        display: 'block', 
-        mt: 2, 
-        mb: 1, 
-        fontWeight: 500,
-        fontFamily: '"Roboto", "Helvetica Neue", sans-serif',
-        fontSize: '0.8rem',
-        letterSpacing: '0.01em'
-      }}>
-        Tailles (production):
-      </Typography>
+      <Typography variant="caption" sx={{ display: 'block', mt: 2, mb: 1, fontWeight: 500 }}>Tailles (production):</Typography>
       <Box sx={{ ml: 0.5 }}>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.7 }}>
           <Box 
@@ -678,13 +614,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               mr: 1
             }} 
           />
-          <Typography variant="caption" sx={{ 
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif', 
-            fontSize: '0.78rem',
-            letterSpacing: '0.01em'
-          }}>
-            Très faible (&lt; 100)
-          </Typography>
+          <Typography variant="caption">Très faible (&lt; 100)</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.7 }}>
           <Box 
@@ -697,13 +627,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               mr: 1
             }} 
           />
-          <Typography variant="caption" sx={{ 
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif', 
-            fontSize: '0.78rem',
-            letterSpacing: '0.01em'
-          }}>
-            Faible (100 - 1 000)
-          </Typography>
+          <Typography variant="caption">Faible (100 - 1 000)</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.7 }}>
           <Box 
@@ -716,13 +640,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               mr: 1
             }} 
           />
-          <Typography variant="caption" sx={{ 
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif', 
-            fontSize: '0.78rem',
-            letterSpacing: '0.01em'
-          }}>
-            Moyenne (1 000 - 10 000)
-          </Typography>
+          <Typography variant="caption">Moyenne (1 000 - 10 000)</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.7 }}>
           <Box 
@@ -735,13 +653,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               mr: 1
             }} 
           />
-          <Typography variant="caption" sx={{ 
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif', 
-            fontSize: '0.78rem',
-            letterSpacing: '0.01em'
-          }}>
-            Élevée (10 000 - 100 000)
-          </Typography>
+          <Typography variant="caption">Élevée (10 000 - 100 000)</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center', mb: 0.7 }}>
           <Box 
@@ -754,13 +666,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               mr: 1
             }} 
           />
-          <Typography variant="caption" sx={{ 
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif', 
-            fontSize: '0.78rem',
-            letterSpacing: '0.01em'
-          }}>
-            Très élevée (100 000 - 1M)
-          </Typography>
+          <Typography variant="caption">Très élevée (100 000 - 1M)</Typography>
         </Box>
         <Box sx={{ display: 'flex', alignItems: 'center'}}>
           <Box 
@@ -773,13 +679,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               mr: 1
             }} 
           />
-          <Typography variant="caption" sx={{ 
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif', 
-            fontSize: '0.78rem',
-            letterSpacing: '0.01em'
-          }}>
-            Massive (&gt; 1M)
-          </Typography>
+          <Typography variant="caption">Massive (&gt; 1M)</Typography>
         </Box>
       </Box>
     </Paper>
@@ -836,26 +736,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
             }}
           >
             <FilterListIcon />
-          </IconButton>
-        </Tooltip>
-        
-        <Tooltip title="Afficher/masquer les noms">
-          <IconButton 
-            onClick={() => setShowLabels(!showLabels)}
-            sx={{ 
-              backgroundColor: 'white', 
-              boxShadow: '0 0 0 2px rgba(0, 0, 0, 0.1)',
-              '&:hover': { backgroundColor: '#f0f0f0' },
-              mr: 1,
-              // Highlight si les labels sont actifs
-              ...(showLabels && {
-                color: '#1976d2',
-                border: '2px solid #1976d2',
-                '&:hover': { backgroundColor: 'rgba(25, 118, 210, 0.04)' }
-              })
-            }}
-          >
-            <TextFieldsIcon />
           </IconButton>
         </Tooltip>
       
@@ -921,13 +801,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
             boxShadow: '0 2px 10px rgba(0, 0, 0, 0.1)'
           }}
         >
-          <Typography variant="subtitle2" sx={{ 
-            fontWeight: 500, 
-            mb: 1.5,
-            fontFamily: '"Roboto", "Helvetica Neue", sans-serif',
-            fontSize: '0.95rem',
-            letterSpacing: '0.01em'
-          }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 500, mb: 1.5 }}>
             Filtrer par statut
           </Typography>
           
@@ -960,13 +834,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
                       />
                     }
                     label={status}
-                    sx={{
-                      '& .MuiFormControlLabel-label': {
-                        fontFamily: '"Roboto", "Helvetica Neue", sans-serif',
-                        fontSize: '0.85rem',
-                        fontWeight: 400
-                      }
-                    }}
                   />
                 );
               })
@@ -978,10 +845,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               <IconButton 
                 size="small"
                 onClick={() => setStatusFilters(Object.keys(statusColors).filter(s => s !== 'default'))}
-                sx={{ 
-                  fontSize: '0.75rem',
-                  fontFamily: '"Roboto", "Helvetica Neue", sans-serif'
-                }}
+                sx={{ fontSize: '0.75rem' }}
               >
                 Tout sélectionner
               </IconButton>
@@ -991,10 +855,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
               <IconButton 
                 size="small"
                 onClick={() => setStatusFilters([])}
-                sx={{ 
-                  fontSize: '0.75rem',
-                  fontFamily: '"Roboto", "Helvetica Neue", sans-serif'
-                }}
+                sx={{ fontSize: '0.75rem' }}
               >
                 Tout effacer
               </IconButton>

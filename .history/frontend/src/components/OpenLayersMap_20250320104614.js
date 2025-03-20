@@ -498,16 +498,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
       });
     
     vectorSource.addFeatures(features);
-    
-    // Assurez-vous que les couches vectorielles ont la bonne valeur showLabels
-    if (mapRef.current) {
-      const vectorLayers = mapRef.current.getLayers().getArray()
-        .filter(layer => layer instanceof VectorLayer);
-      
-      vectorLayers.forEach(layer => {
-        layer.set('showLabels', showLabels);
-      });
-    }
   };
   
   // Gérer le changement de hauteur

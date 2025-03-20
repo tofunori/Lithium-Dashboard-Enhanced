@@ -184,7 +184,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
     // Créer la couche vectorielle avec les points
     const vectorLayer = new VectorLayer({
       source: vectorSource,
-      style: function(feature) {
+      style: (feature) => {
         const production = feature.get('production');
         const status = feature.get('status');
         const color = statusColors[status] || statusColors.default;
@@ -203,9 +203,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
           rgba = `rgba(${r}, ${g}, ${b}, 0.7)`; // 0.7 = 70% d'opacité
         }
         
-        // Récupérer la valeur actuelle de showLabels depuis la couche
-        const layerShowLabels = vectorLayer.get('showLabels');
-        
         return new Style({
           image: new CircleStyle({
             radius: size,
@@ -218,7 +215,7 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
             })
           }),
           // Ajouter le nom comme texte seulement si showLabels est activé
-          text: layerShowLabels ? new Text({
+          text: showLabels ? new Text({
             text: feature.get('name'),
             offsetY: -size - 10,
             font: 'normal 12px Roboto, "Helvetica Neue", sans-serif',
@@ -241,9 +238,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
         });
       }
     });
-    
-    // Définir la propriété showLabels initiale
-    vectorLayer.set('showLabels', showLabels);
     
     // Créer la carte OpenLayers
     const map = new Map({
@@ -405,34 +399,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
     }
   }, [statusFilters, plants]);
   
-  // Mettre à jour lorsque les labels changent
-  useEffect(() => {
-    if (mapRef.current) {
-      console.log("Mise à jour des labels:", showLabels ? "Affichés" : "Masqués");
-      
-      const vectorLayers = mapRef.current.getLayers().getArray()
-        .filter(layer => layer instanceof VectorLayer);
-      
-      vectorLayers.forEach(layer => {
-        // Mettre à jour la propriété showLabels sur la couche
-        layer.set('showLabels', showLabels);
-        console.log("Propriété showLabels mise à jour sur la couche:", layer.get('showLabels'));
-        
-        // Forcer la mise à jour du style
-        layer.changed();
-        
-        // Mettre à jour chaque feature pour forcer le rendu des labels
-        const source = layer.getSource();
-        const features = source.getFeatures();
-        features.forEach(feature => {
-          feature.changed();
-        });
-      });
-      
-      mapRef.current.render();
-    }
-  }, [showLabels]);
-  
   // Gérer le redimensionnement
   useEffect(() => {
     if (mapRef.current) {
@@ -498,16 +464,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
       });
     
     vectorSource.addFeatures(features);
-    
-    // Assurez-vous que les couches vectorielles ont la bonne valeur showLabels
-    if (mapRef.current) {
-      const vectorLayers = mapRef.current.getLayers().getArray()
-        .filter(layer => layer instanceof VectorLayer);
-      
-      vectorLayers.forEach(layer => {
-        layer.set('showLabels', showLabels);
-      });
-    }
   };
   
   // Gérer le changement de hauteur

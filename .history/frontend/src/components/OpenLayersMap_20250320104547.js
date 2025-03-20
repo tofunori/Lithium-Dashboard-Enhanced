@@ -414,10 +414,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
         .filter(layer => layer instanceof VectorLayer);
       
       vectorLayers.forEach(layer => {
-        // Mettre à jour la propriété showLabels sur la couche
-        layer.set('showLabels', showLabels);
-        console.log("Propriété showLabels mise à jour sur la couche:", layer.get('showLabels'));
-        
         // Forcer la mise à jour du style
         layer.changed();
         
@@ -498,16 +494,6 @@ const OpenLayersMap = ({ plants = [], onResize }) => {
       });
     
     vectorSource.addFeatures(features);
-    
-    // Assurez-vous que les couches vectorielles ont la bonne valeur showLabels
-    if (mapRef.current) {
-      const vectorLayers = mapRef.current.getLayers().getArray()
-        .filter(layer => layer instanceof VectorLayer);
-      
-      vectorLayers.forEach(layer => {
-        layer.set('showLabels', showLabels);
-      });
-    }
   };
   
   // Gérer le changement de hauteur
