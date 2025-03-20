@@ -1,121 +1,114 @@
-# Lithium-Dashboard Enhanced
+# Lithium Dashboard Enhanced
 
-Enhanced version of the original Lithium-Dashboard for visualizing electric vehicle battery recycling facilities in North America, now with a Django backend and React frontend for improved functionality and accessibility.
+## Présentation
+Lithium Dashboard est une application de suivi et de gestion des installations de recyclage du lithium. Cette version améliorée propose une interface réactive et une gestion avancée des documents.
 
-## Features
-
-- **Interactive Map** - View all recycling facilities on an interactive map
-- **Detailed Visualizations** - Filter by country, status, and capacity
-- **Admin Dashboard** - Secure admin interface for data management
-- **User Authentication** - Secure login for authorized users
-- **Remote Access** - Access the dashboard from anywhere
-- **Responsive Design** - Works on desktop and mobile devices
-- **Database Integration** - Persistent data storage with Django's ORM
-- **API Endpoints** - RESTful API for data retrieval and updates
-
-## Technology Stack
-
-### Backend
-- Django (Python web framework)
-- Django REST Framework (API framework)
-- PostgreSQL (database)
-
-### Frontend
-- React.js (UI framework)
-- React-Leaflet (maps)
-- Recharts (data visualization)
-- Axios (API requests)
-
-## Project Structure
-
-```
-Lithium-Dashboard-Enhanced/
-├── backend/                 # Django Backend
-│   ├── dashboard/           # Main Django project
-│   ├── core/                # Core app for models and APIs
-│   ├── manage.py            # Django management script
-│   └── requirements.txt     # Python dependencies
-├── frontend/                # React Frontend
-│   ├── public/              # Static files
-│   ├── src/                 # React source code
-│   ├── package.json         # JavaScript dependencies
-│   └── README.md            # Frontend-specific instructions
-└── docs/                    # Documentation
-```
+## Configuration requise
+- Node.js v14+ (recommandé v16+)
+- Python 3.8+
+- Un navigateur web moderne
 
 ## Installation
 
-### Backend Setup
+### Cloner le projet
+```bash
+git clone <repository-url>
+cd Lithium-Dashboard-Enhanced
+```
 
-1. Navigate to the backend directory:
-   ```
-   cd backend
-   ```
+### Installation du backend (Django)
+1. Créer et activer un environnement virtuel:
+```bash
+python -m venv env
+# Sur Windows
+env\Scripts\activate
+# Sur macOS/Linux
+source env/bin/activate
+```
 
-2. Create a virtual environment:
-   ```
-   python -m venv venv
-   source venv/bin/activate  # On Windows: venv\Scripts\activate
-   ```
+2. Installer les dépendances:
+```bash
+cd backend
+pip install -r requirements.txt
+```
 
-3. Install dependencies:
-   ```
-   pip install -r requirements.txt
-   ```
+3. Appliquer les migrations:
+```bash
+cd ..
+python manage.py migrate
+```
 
-4. Run migrations:
-   ```
-   python manage.py migrate
-   ```
+### Installation du frontend (React)
+1. Installer les dépendances:
+```bash
+cd frontend
+npm install
+```
 
-5. Create a superuser for admin access:
-   ```
-   python manage.py createsuperuser
-   ```
+2. Installer les dépendances PDF (si nécessaire):
+```bash
+npm install jspdf jspdf-autotable html2canvas html2pdf.js --save
+```
 
-6. Start the backend server:
-   ```
-   python manage.py runserver
-   ```
+## Démarrage de l'application
 
-### Frontend Setup
+### Méthode recommandée
+Utilisez le script de démarrage automatique:
+```bash
+start-lithium.bat
+```
 
-1. Navigate to the frontend directory:
-   ```
-   cd frontend
-   ```
+Ce script:
+- Active l'environnement virtuel Python
+- Démarre le serveur Django (backend)
+- Démarre le serveur React (frontend)
+- Ouvre automatiquement l'application dans votre navigateur
 
-2. Install dependencies:
-   ```
-   npm install
-   ```
+### Démarrage manuel
+Si vous préférez démarrer les composants séparément:
 
-3. Start the development server:
-   ```
-   npm start
-   ```
+1. Démarrer le backend:
+```bash
+# Activez d'abord l'environnement virtuel
+cd Lithium-Dashboard-Enhanced
+python manage.py runserver
+```
 
-## Usage
+2. Démarrer le frontend:
+```bash
+cd frontend
+npm start
+```
 
-- Access the dashboard at: http://localhost:3000
-- Access the admin interface at: http://localhost:8000/admin
-- API endpoints are available at: http://localhost:8000/api/
+3. Accéder à l'application à l'adresse: `http://localhost:3003`
 
-## Deployment
+## Résolution des problèmes
+Si vous rencontrez des problèmes avec l'application:
 
-This project can be deployed using various services:
+1. **Erreurs liées aux PDF**:
+   - Exécutez `frontend\fix-pdf-dependencies.bat`
 
-1. Backend: Render, Heroku, or any Django-compatible hosting
-2. Frontend: Netlify, Vercel, or any static site hosting
-3. Database: PostgreSQL services like Render, Heroku Postgres, etc.
+2. **Dépendances manquantes**:
+   - Exécutez `frontend\install-missing-deps.bat`
 
-Detailed deployment instructions are available in the docs/ directory.
+3. **Erreurs de connexion backend/frontend**:
+   - Vérifiez que le backend est bien lancé sur le port 8000
+   - Vérifiez que le proxy est correctement configuré dans le frontend
 
-## License
+## Structure du projet
+- `/frontend` - Application React
+- `/backend` - API Django
+- `/lithium_dashboard` - Configuration Django principale
+- `/recycling_plants` - Application Django pour la gestion des installations
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## Fonctionnalités
+- Visualisation des installations de recyclage
+- Gestion des documents et rapports
+- Analyse de données
+- Interface responsive pour mobile et desktop
 
-## Acknowledgements
+## Auteur
+[Votre nom]
 
-- Original Lithium-Dashboard project
-- All contributors to the open-source libraries used in this project
+## Licence
+[Votre licence]

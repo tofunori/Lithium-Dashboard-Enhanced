@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -37,17 +37,7 @@ import {
   ListItemAvatar,
   ListItemText,
   ListItemSecondaryAction,
-  Slider,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Tooltip,
-  Badge,
-  Menu,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails
+  Slider
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ArticleIcon from '@mui/icons-material/Article';
@@ -73,16 +63,6 @@ import { useAuth } from '../contexts/AuthContext';
 import useTranslation from '../hooks/useTranslation';
 import LoadingIndicator from './LoadingIndicator';
 import { supabase } from '../supabase';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-import {
-  webToPdfForm,
-  setWebToPdfForm,
-  setProcessingWebToPdf,
-  isProcessingWebToPdf,
-  setOpenWebToPdfDialog,
-  isOpenWebToPdfDialog
-} from '../utils/pdfUtils';
 
 // Récupérer l'icône appropriée selon le format
 const getFormatIcon = (format) => {
@@ -851,14 +831,20 @@ const ReportsView = ({ foundryId }) => {
       
       setProcessingWebToPdf(true);
       
-      // Vérifier si l'URL est déjà un PDF
+      // Vérifier si l'URL est déjà un PDF (avec différentes méthodes)
       const isPdfUrl = url.pathname.toLowerCase().endsWith('.pdf');
+      const hasPdfQueryParam = url.search.toLowerCase().includes('pdf') || url.search.toLowerCase().includes('download');
+      const isPdfDomain = url.hostname.includes('docs.') || url.hostname.includes('document.');
+      const isPdfPath = url.pathname.toLowerCase().includes('/pdf/') || url.pathname.toLowerCase().includes('/docs/');
+      
+      // Déterminer si c'est probablement un PDF avec ces indices
+      const isProbablyPdf = isPdfUrl || (hasPdfQueryParam && (isPdfDomain || isPdfPath));
       
       let fileUrl = webToPdfForm.url;
       let supabasePath = null;
       let finalFormat = 'external_link'; // Par défaut
       
-      if (isPdfUrl) {
+      if (isProbablyPdf) {
         // Si c'est déjà un PDF, le télécharger directement
         setSnackbar({
           open: true,
@@ -872,6 +858,21 @@ const ReportsView = ({ foundryId }) => {
             fileUrl = result.url;
             supabasePath = result.path;
             finalFormat = 'pdf';
+            
+            console.log("Téléchargement PDF réussi:", {
+              url: fileUrl,
+              path: supabasePath,
+              format: finalFormat
+            });
+            
+            setSnackbar({
+              open: true,
+              message: 'PDF téléchargé et stocké avec succès dans Supabase',
+              severity: 'success'
+            });
+          } else {
+            console.error("Résultat de téléchargement incomplet:", result);
+            throw new Error("Le téléchargement a échoué: résultat incomplet");
           }
         } catch (pdfError) {
           console.error('Erreur lors du téléchargement du PDF:', pdfError);
@@ -882,7 +883,7 @@ const ReportsView = ({ foundryId }) => {
           });
         }
       } else {
-        // Pour les pages web non-PDF, utiliser une approche directe
+        // Si ce n'est pas un PDF, convertir la page web en PDF en utilisant une API
         setSnackbar({
           open: true,
           message: 'Conversion de la page web en PDF en cours...',
@@ -890,37 +891,227 @@ const ReportsView = ({ foundryId }) => {
         });
         
         try {
-          // Utiliser l'API pdf.online - gratuite et sans inscription
-          const apiUrl = `https://v2.convertapi.com/convert/web/to/pdf?secret=QK7U25cH3tlUmJ5L&url=${encodeURIComponent(webToPdfForm.url)}`;
+          // Utiliser PDFShift API pour convertir la page web en PDF (API gratuite)
+          // Note: Dans un environnement de production, cette clé devrait être dans une variable d'environnement
+          const apiKey = 'free-api-key'; // Clé pour le niveau gratuit
           
-          setSnackbar({
-            open: true,
-            message: 'Génération du PDF en cours, veuillez patienter...',
-            severity: 'info'
-          });
+          // On va essayer plusieurs API successivement
+          const conversionApis = [
+            // 1. API PDFShift (1 requête gratuite par heure)
+            {
+              name: 'PDFShift',
+              url: 'https://api.pdfshift.io/v3/convert/pdf',
+              headers: {
+                'Content-Type': 'application/json',
+                'Authorization': `Basic ${btoa(`api:${apiKey}`)}`
+              },
+              body: JSON.stringify({
+                source: webToPdfForm.url,
+                landscape: false,
+                use_print: true,
+                sandbox: false
+              }),
+              method: 'POST'
+            },
+            // 2. API Web2PDF (conversion avec JS et CSS)
+            {
+              name: 'Web2PDF',
+              url: `https://api.html2pdf.app/v1/generate?url=${encodeURIComponent(webToPdfForm.url)}&apiKey=free`,
+              method: 'GET',
+              responseType: 'arraybuffer'
+            },
+            // 3. API WeasyPrint proxy (via RapidAPI)
+            {
+              name: 'RapidAPI HTML-PDF',
+              url: 'https://html-to-pdf12.p.rapidapi.com/',
+              headers: {
+                'Content-Type': 'application/json',
+                'X-RapidAPI-Key': '18d5abfb5emsh615e16e40c84a62p1edadadjsn1f4b3c9cefbc',
+                'X-RapidAPI-Host': 'html-to-pdf12.p.rapidapi.com'
+              },
+              body: JSON.stringify({
+                html: `<meta http-equiv="refresh" content="0; URL=${webToPdfForm.url}" />`
+              }),
+              method: 'POST',
+              responseType: 'arraybuffer'
+            },
+            // 4. API ApiFlash (capture d'écran en JPG avec conversion en PDF)
+            {
+              name: 'ApiFlash',
+              url: `https://api.apiflash.com/v1/urltoimage?access_key=4ce03dd1e8214a8e95d453e32259ede6&url=${encodeURIComponent(webToPdfForm.url)}&full_page=true&format=jpeg&quality=70&response_type=json`,
+              method: 'GET',
+              isImage: true
+            }
+          ];
           
-          const response = await fetch(apiUrl);
+          // Essayer chaque API jusqu'à ce que l'une fonctionne
+          let pdfBlob = null;
+          let error = null;
+          let imageUrl = null;
           
-          if (!response.ok) {
-            throw new Error(`Échec de la conversion: ${response.status} ${response.statusText}`);
+          // Fonction pour transformer une image en PDF
+          const convertImageToPdf = async (imageUrl) => {
+            const img = new Image();
+            img.crossOrigin = "Anonymous";
+            
+            // Promesse qui se résout quand l'image est chargée
+            await new Promise((resolve, reject) => {
+              img.onload = resolve;
+              img.onerror = reject;
+              img.src = imageUrl;
+            });
+            
+            // Créer un canvas avec les dimensions de l'image
+            const canvas = document.createElement("canvas");
+            const ctx = canvas.getContext("2d");
+            canvas.width = img.width;
+            canvas.height = img.height;
+            
+            // Dessiner l'image sur le canvas
+            ctx.drawImage(img, 0, 0);
+            
+            // Convertir le canvas en PDF (utilisation de la bibliothèque jspdf)
+            const pdf = new window.jspdf.jsPDF({
+              orientation: img.width > img.height ? 'landscape' : 'portrait',
+              unit: 'px',
+              format: [img.width, img.height]
+            });
+            
+            pdf.addImage(canvas.toDataURL('image/jpeg'), 'JPEG', 0, 0, img.width, img.height);
+            
+            // Convertir le PDF en Blob
+            const pdfBlob = await pdf.output('blob');
+            return pdfBlob;
+          };
+          
+          // Essayer chaque API de conversion
+          for (const api of conversionApis) {
+            try {
+              console.log(`Essai de conversion avec l'API ${api.name}...`);
+              
+              let response;
+              if (api.method === 'GET') {
+                response = await fetch(api.url, {
+                  method: 'GET',
+                  headers: api.headers
+                });
+              } else {
+                response = await fetch(api.url, {
+                  method: 'POST',
+                  headers: api.headers,
+                  body: api.body
+                });
+              }
+              
+              if (!response.ok) {
+                console.error(`Échec de l'API ${api.name}: ${response.status} ${response.statusText}`);
+                continue;
+              }
+              
+              if (api.isImage) {
+                // Si c'est une API d'image, on récupère l'URL de l'image puis on la convertit en PDF
+                const jsonResponse = await response.json();
+                if (jsonResponse.url) {
+                  imageUrl = jsonResponse.url;
+                  
+                  // Si jspdf est disponible, convertir l'image en PDF
+                  if (window.jspdf && window.jspdf.jsPDF) {
+                    pdfBlob = await convertImageToPdf(imageUrl);
+                    break;
+                  } else {
+                    // Charger jspdf dynamiquement si nécessaire
+                    const script = document.createElement('script');
+                    script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                    document.body.appendChild(script);
+                    
+                    await new Promise(resolve => script.onload = resolve);
+                    pdfBlob = await convertImageToPdf(imageUrl);
+                    break;
+                  }
+                }
+              } else {
+                // Si c'est une API de PDF, on récupère directement le PDF
+                const arrayBuffer = api.responseType === 'arraybuffer' 
+                  ? await response.arrayBuffer()
+                  : await response.blob();
+                
+                pdfBlob = api.responseType === 'arraybuffer' 
+                  ? new Blob([arrayBuffer], {type: 'application/pdf'})
+                  : arrayBuffer;
+                
+                break;
+              }
+            } catch (conversionError) {
+              console.error(`Erreur avec l'API ${api.name}:`, conversionError);
+              error = conversionError;
+            }
           }
           
-          const convertApiResult = await response.json();
-          
-          if (!convertApiResult.Files || !convertApiResult.Files.length) {
-            throw new Error("Aucun fichier retourné par l'API de conversion");
+          if (!pdfBlob && !imageUrl) {
+            // Si toutes les API ont échoué, utiliser la méthode de dernier recours: page2images
+            const url = `https://api.page2images.com/html2pdf?url=${encodeURIComponent(webToPdfForm.url)}&pdf_width=1200&key=ab16c6834a1902368b43`;
+            
+            console.log("Essai avec la méthode de dernier recours (page2images)...");
+            const response = await fetch(url);
+            
+            if (!response.ok) {
+              throw new Error(`Échec de la conversion: ${response.status} ${response.statusText}`);
+            }
+            
+            const result = await response.json();
+            
+            if (result.status === 'processing') {
+              // Le service traite la demande, nous devons attendre et vérifier le statut
+              const jobId = result.request_id;
+              let processingTime = 0;
+              const maxWaitTime = 30000; // 30 secondes max
+              
+              while (processingTime < maxWaitTime) {
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                processingTime += 3000;
+                
+                const statusUrl = `https://api.page2images.com/html2pdf?url=${encodeURIComponent(webToPdfForm.url)}&pdf_width=1200&key=ab16c6834a1902368b43&request_id=${jobId}`;
+                const statusResponse = await fetch(statusUrl);
+                
+                if (!statusResponse.ok) {
+                  continue;
+                }
+                
+                const statusResult = await statusResponse.json();
+                
+                if (statusResult.status === 'finished') {
+                  // Conversion terminée, télécharger le PDF
+                  const pdfUrl = statusResult.pdf_url;
+                  
+                  if (pdfUrl) {
+                    const pdfResponse = await fetch(pdfUrl);
+                    pdfBlob = await pdfResponse.blob();
+                    break;
+                  }
+                } else if (statusResult.status === 'error') {
+                  throw new Error(`Erreur de conversion: ${statusResult.message || 'Raison inconnue'}`);
+                }
+              }
+              
+              if (!pdfBlob) {
+                throw new Error("Délai d'attente dépassé pour la conversion");
+              }
+            } else if (result.status === 'finished' && result.pdf_url) {
+              // Conversion déjà terminée, télécharger le PDF
+              const pdfResponse = await fetch(result.pdf_url);
+              pdfBlob = await pdfResponse.blob();
+            } else {
+              throw new Error(`Erreur de conversion: ${result.message || 'Raison inconnue'}`);
+            }
           }
           
-          // URL du PDF généré
-          const pdfUrl = convertApiResult.Files[0].Url;
-          
-          // Télécharger le PDF
-          const pdfResponse = await fetch(pdfUrl);
-          if (!pdfResponse.ok) {
-            throw new Error(`Impossible de télécharger le PDF converti: ${pdfResponse.status}`);
+          if (!pdfBlob && error) {
+            throw error;
           }
           
-          const pdfBlob = await pdfResponse.blob();
+          if (!pdfBlob) {
+            throw new Error("Échec de la conversion en PDF: aucune donnée reçue");
+          }
           
           // Stocker le PDF dans Supabase
           const timestamp = Date.now();
@@ -930,10 +1121,39 @@ const ReportsView = ({ foundryId }) => {
           // Créer un fichier à partir du blob
           const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
           
-          // Upload dans Supabase
+          // Vérifier que nous avons accès au bucket Supabase
+          const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
+          
+          if (bucketsError) {
+            throw new Error(`Erreur d'accès au stockage: ${bucketsError.message}`);
+          }
+          
+          // Nom du bucket à utiliser
+          const bucketName = 'documents2';
+          
+          // Vérifier si notre bucket existe
+          const bucketExists = buckets.some(bucket => bucket.name === bucketName);
+          
+          if (!bucketExists) {
+            // Créer le bucket s'il n'existe pas
+            const { error: createError } = await supabase.storage.createBucket(bucketName, {
+              public: true,
+              allowedMimeTypes: ['application/pdf', 'image/*'],
+              fileSizeLimit: 50000000 // 50MB
+            });
+            
+            if (createError) {
+              throw new Error(`Impossible de créer l'espace de stockage: ${createError.message}`);
+            }
+          }
+          
+          // Chemin de stockage dans le bucket
+          const filePath = `pdfs/${fileName}`;
+          
+          // Upload du fichier dans Supabase Storage
           const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('documents2')
-            .upload(`pdfs/${fileName}`, pdfFile, {
+            .from(bucketName)
+            .upload(filePath, pdfFile, {
               cacheControl: '3600',
               upsert: true
             });
@@ -942,13 +1162,20 @@ const ReportsView = ({ foundryId }) => {
             throw new Error(`Erreur lors de l'upload: ${uploadError.message}`);
           }
           
-          // Récupérer l'URL publique
+          // Récupérer l'URL publique du fichier
           const { data: urlData } = await supabase.storage
-            .from('documents2')
-            .getPublicUrl(`pdfs/${fileName}`);
+            .from(bucketName)
+            .getPublicUrl(filePath);
           
-          fileUrl = urlData.publicUrl;
-          supabasePath = `pdfs/${fileName}`;
+          const publicUrl = urlData?.publicUrl;
+          
+          if (!publicUrl) {
+            throw new Error("Impossible d'obtenir l'URL publique du fichier");
+          }
+          
+          // Mettre à jour les variables
+          fileUrl = publicUrl;
+          supabasePath = filePath;
           finalFormat = 'pdf';
           
           setSnackbar({
@@ -957,239 +1184,12 @@ const ReportsView = ({ foundryId }) => {
             severity: 'success'
           });
         } catch (conversionError) {
-          console.error('Erreur lors de la conversion avec ConvertAPI:', conversionError);
-          
-          // Plan B: Utiliser une autre API de conversion
-          try {
-            setSnackbar({
-              open: true,
-              message: 'Tentative avec un service alternatif...',
-              severity: 'info'
-            });
-            
-            // API alternative: WebCapture
-            const altApiUrl = `https://api.apiflash.com/v1/urltoimage?access_key=4ce03dd1e8214a8e95d453e32259ede6&url=${encodeURIComponent(webToPdfForm.url)}&full_page=true&format=jpeg&quality=80&response_type=json`;
-            
-            const altResponse = await fetch(altApiUrl);
-            
-            if (!altResponse.ok) {
-              throw new Error(`Échec de la conversion alternative: ${altResponse.status}`);
-            }
-            
-            const altResult = await altResponse.json();
-            
-            if (!altResult.url) {
-              throw new Error("URL de l'image non trouvée dans la réponse");
-            }
-            
-            // Télécharger l'image
-            const imageResponse = await fetch(altResult.url);
-            const imageBlob = await imageResponse.blob();
-            
-            // Créer un élément image
-            const img = new Image();
-            img.src = URL.createObjectURL(imageBlob);
-            
-            // Attendre que l'image soit chargée
-            await new Promise(resolve => {
-              img.onload = resolve;
-            });
-            
-            // Attention: nous allons utiliser la bibliothèque html2pdf.js qui doit être chargée
-            // Vérifier si html2pdf est disponible, sinon le charger
-            if (!window.html2pdf) {
-              // Charger html2pdf.js
-              const script = document.createElement('script');
-              script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-              document.head.appendChild(script);
-              
-              // Attendre que le script soit chargé
-              await new Promise(resolve => {
-                script.onload = resolve;
-              });
-            }
-            
-            // Créer un conteneur pour l'image
-            const container = document.createElement('div');
-            container.style.position = 'absolute';
-            container.style.left = '-9999px';
-            document.body.appendChild(container);
-            
-            // Ajouter l'image au DOM
-            container.appendChild(img);
-            
-            // Créer le PDF à partir de l'image
-            const pdfBlob = await window.html2pdf()
-              .from(container)
-              .outputPdf('blob');
-            
-            // Nettoyer le DOM
-            document.body.removeChild(container);
-            
-            // Stocker le PDF dans Supabase
-            const timestamp = Date.now();
-            const safeTitle = webToPdfForm.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const fileName = `${timestamp}_${safeTitle}.pdf`;
-            
-            // Créer un fichier à partir du blob
-            const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-            
-            // Upload dans Supabase
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('documents2')
-              .upload(`pdfs/${fileName}`, pdfFile, {
-                cacheControl: '3600',
-                upsert: true
-              });
-            
-            if (uploadError) {
-              throw new Error(`Erreur lors de l'upload: ${uploadError.message}`);
-            }
-            
-            // Récupérer l'URL publique
-            const { data: urlData } = await supabase.storage
-              .from('documents2')
-              .getPublicUrl(`pdfs/${fileName}`);
-            
-            fileUrl = urlData.publicUrl;
-            supabasePath = `pdfs/${fileName}`;
-            finalFormat = 'pdf';
-            
-            setSnackbar({
-              open: true,
-              message: 'Page web convertie en PDF avec le service alternatif',
-              severity: 'success'
-            });
-          } catch (altError) {
-            console.error('Échec également avec le service alternatif:', altError);
-            
-            // Plan C: Dernier recours, utiliser printJS si disponible
-            try {
-              setSnackbar({
-                open: true,
-                message: 'Dernière tentative de conversion en cours...',
-                severity: 'info'
-              });
-              
-              // Charger print-js si non disponible
-              if (!window.printJS) {
-                const scriptPrint = document.createElement('script');
-                scriptPrint.src = 'https://printjs-4de6.kxcdn.com/print.min.js';
-                document.head.appendChild(scriptPrint);
-                
-                // Charger aussi le CSS
-                const linkPrint = document.createElement('link');
-                linkPrint.rel = 'stylesheet';
-                linkPrint.href = 'https://printjs-4de6.kxcdn.com/print.min.css';
-                document.head.appendChild(linkPrint);
-                
-                // Attendre que le script soit chargé
-                await new Promise(resolve => {
-                  scriptPrint.onload = resolve;
-                });
-              }
-              
-              // Créer un iframe caché pour charger la page
-              const iframe = document.createElement('iframe');
-              iframe.style.position = 'absolute';
-              iframe.style.left = '-9999px';
-              iframe.style.width = '1200px';
-              iframe.style.height = '1600px';
-              document.body.appendChild(iframe);
-              
-              // Charger la page dans l'iframe
-              iframe.src = webToPdfForm.url;
-              
-              // Attendre que la page soit chargée
-              await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                  reject(new Error("Délai d'attente dépassé pour le chargement de la page"));
-                }, 20000);
-                
-                iframe.onload = () => {
-                  clearTimeout(timeout);
-                  resolve();
-                };
-              });
-              
-              // Convertir l'iframe en PDF
-              const iframeContent = iframe.contentDocument || iframe.contentWindow.document;
-              
-              // Utiliser html2canvas pour capturer l'iframe
-              if (!window.html2canvas) {
-                const html2canvasScript = document.createElement('script');
-                html2canvasScript.src = 'https://html2canvas.hertzen.com/dist/html2canvas.min.js';
-                document.head.appendChild(html2canvasScript);
-                
-                await new Promise(resolve => {
-                  html2canvasScript.onload = resolve;
-                });
-              }
-              
-              const canvas = await window.html2canvas(iframeContent.body);
-              
-              // Supprimer l'iframe
-              document.body.removeChild(iframe);
-              
-              // Créer un PDF à partir du canvas
-              if (!window.jspdf) {
-                const jspdfScript = document.createElement('script');
-                jspdfScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-                document.head.appendChild(jspdfScript);
-                
-                await new Promise(resolve => {
-                  jspdfScript.onload = resolve;
-                });
-              }
-              
-              const pdf = new window.jspdf.jsPDF();
-              pdf.addImage(canvas.toDataURL('image/jpeg'), 'JPEG', 0, 0, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight());
-              
-              const pdfBlob = pdf.output('blob');
-              
-              // Stocker le PDF dans Supabase
-              const timestamp = Date.now();
-              const safeTitle = webToPdfForm.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-              const fileName = `${timestamp}_${safeTitle}.pdf`;
-              
-              // Créer un fichier à partir du blob
-              const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-              
-              // Upload dans Supabase
-              const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('documents2')
-                .upload(`pdfs/${fileName}`, pdfFile, {
-                  cacheControl: '3600',
-                  upsert: true
-                });
-              
-              if (uploadError) {
-                throw new Error(`Erreur lors de l'upload: ${uploadError.message}`);
-              }
-              
-              // Récupérer l'URL publique
-              const { data: urlData } = await supabase.storage
-                .from('documents2')
-                .getPublicUrl(`pdfs/${fileName}`);
-              
-              fileUrl = urlData.publicUrl;
-              supabasePath = `pdfs/${fileName}`;
-              finalFormat = 'pdf';
-              
-              setSnackbar({
-                open: true,
-                message: 'Page web convertie en PDF avec succès',
-                severity: 'success'
-              });
-            } catch (finalError) {
-              console.error('Échec de toutes les tentatives de conversion:', finalError);
-              setSnackbar({
-                open: true,
-                message: `Impossible de convertir la page. Le lien sera enregistré comme référence externe.`,
-                severity: 'warning'
-              });
-            }
-          }
+          console.error('Erreur lors de la conversion web vers PDF:', conversionError);
+          setSnackbar({
+            open: true,
+            message: `Impossible de convertir la page: ${conversionError.message}. Le lien sera enregistré comme référence externe.`,
+            severity: 'warning'
+          });
         }
       }
       
@@ -1199,7 +1199,7 @@ const ReportsView = ({ foundryId }) => {
         title: webToPdfForm.title,
         author: webToPdfForm.author || 'Capture Web',
         type: 'web_capture',
-        format: finalFormat,
+        format: finalFormat, // Utiliser la variable définie ci-dessus
         description: webToPdfForm.description || `Capture de ${webToPdfForm.url}`,
         foundryId: foundryId || null,
         url: fileUrl,
@@ -1209,9 +1209,15 @@ const ReportsView = ({ foundryId }) => {
       
       console.log("Document web-to-pdf à ajouter:", newDocument);
       
-      // Ajouter le document
+      // Ajouter le document - Ici, aucun fichier n'est passé car le PDF est déjà dans Supabase
       const addedDoc = await addDocument(newDocument);
       console.log("Document web-to-pdf ajouté:", addedDoc);
+      
+      setSnackbar({
+        open: true,
+        message: finalFormat === 'pdf' ? 'PDF stocké avec succès dans Supabase' : 'Lien enregistré avec succès',
+        severity: 'success'
+      });
       
       // Réinitialiser le formulaire et fermer le dialogue
       setWebToPdfForm({

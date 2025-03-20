@@ -247,159 +247,98 @@ export const DocumentsProvider = ({ children }) => {
   }, []);
   
   // Fonction pour ajouter un document uploadé
-  const addDocument = async (document, file = null) => {
+  const addDocument = async (document, file, fileUrl) => {
     try {
-      // S'assurer que le type et le format sont définis avec des valeurs par défaut si nécessaire
+      // Vérifier que l'utilisateur est authentifié
+      if (!isAuthenticated || !userId) {
+        throw new Error("Vous devez être connecté pour ajouter un document");
+      }
+      
+      // ID unique pour le document
+      const docId = new Date().getTime().toString();
+      
+      // S'assurer que les propriétés requises sont définies
       const documentType = document.type || 'report';
-      let documentFormat = document.format || 'external_link';
+      const documentFormat = document.format || 'external_link';
       
-      // Vérifier si nous avons un chemin Supabase qui indique un fichier PDF
-      if (document.supabasePath) {
-        const isPdfPath = document.supabasePath.toLowerCase().includes('pdf');
-        if (isPdfPath) {
-          documentFormat = 'pdf';
-          console.log("Format défini sur PDF car le document a un chemin Supabase PDF");
-        }
-      }
-      
-      // Vérifier si l'URL se termine par .pdf
-      if (document.url && document.url.toLowerCase().endsWith('.pdf')) {
-        documentFormat = 'pdf';
-        console.log("Format défini sur PDF car l'URL se termine par .pdf");
-      }
-      
-      // Si le supabasePath est fourni, c'est un document stocké dans Supabase
-      if (document.supabasePath) {
-        documentFormat = 'pdf';
-        console.log("Document avec chemin Supabase détecté, format défini comme PDF");
-      }
-      
-      // Intégrer la vérification du nom de fichier pour les fichiers uploadés
-      if (file && file.name && file.name.toLowerCase().endsWith('.pdf')) {
-        documentFormat = 'pdf';
-        console.log("Format défini sur PDF car le fichier a une extension .pdf");
-      }
-      
-      // Préparer les données du document
+      // Créer les données du document à insérer dans Supabase
       const documentData = {
-        id: document.id || Date.now().toString(),
-        title: document.title,
-        author: document.author || "Auteur non spécifié",
+        title: document.title || 'Sans titre',
+        author: document.author || 'Anonyme',
         type: documentType,
         format: documentFormat,
-        description: document.description || "",
-        date: document.date || new Date().toISOString(),
-        url: document.url || "",
-        supabasePath: document.supabasePath || null,
-        foundryId: document.foundryId || null,
-        createdAt: document.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        description: document.description || '',
+        foundry_id: document.foundryId,
+        url: fileUrl || document.url || '',
+        supabase_path: document.supabasePath || null,
+        thumbnail: documentFormat === 'pdf' 
+          ? '/images/pdf-icon.png' 
+          : (file && file.type && file.type.startsWith('image/') ? fileUrl : '/images/file-icon.png'),
+        user_id: userId,
+        upload_date: new Date().toISOString()
       };
       
-      // Log pour débogage
+      // Afficher les données pour le débogage
       console.log("Données du document à insérer:", documentData);
       
-      // Création ou mise à jour du document dans Supabase
-      const { data: insertedDoc, error: insertError } = await supabase
+      // Insérer dans Supabase
+      const { data: insertedDoc, error } = await supabase
         .from('documents')
-        .upsert(documentData)
-        .select();
+        .insert(documentData)
+        .select()
+        .single();
       
-      if (insertError) {
-        console.error("Erreur lors de l'insertion du document:", insertError);
-        throw new Error(`Erreur de base de données: ${insertError.message}`);
+      if (error) {
+        console.error("Erreur Supabase:", error);
+        throw error;
       }
       
       console.log('Document ajouté à Supabase:', insertedDoc);
       
-      // Si c'est un document avec un fichier, effectuer l'upload du fichier
-      if (file) {
-        try {
-          // Générer un nom de fichier sécurisé
-          const timestamp = Date.now();
-          const fileExtension = file.name.split('.').pop().toLowerCase();
-          const safeTitle = documentData.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-          const fileName = `${timestamp}_${safeTitle}.${fileExtension}`;
+      // Préparer le nouveau document pour l'état local
+      const newDocument = {
+        id: insertedDoc.id,
+        title: insertedDoc.title,
+        author: insertedDoc.author,
+        type: insertedDoc.type,
+        format: insertedDoc.format,
+        description: insertedDoc.description,
+        foundryId: insertedDoc.foundry_id,
+        url: insertedDoc.url,
+        supabasePath: insertedDoc.supabase_path,
+        thumbnail: insertedDoc.thumbnail,
+        uploadDate: insertedDoc.upload_date,
+        date: insertedDoc.upload_date // Ajout important: ajouter également date ici
+      };
+      
+      // Si le document est associé à une fonderie
+      if (document.foundryId) {
+        setReportsData(prevData => {
+          // Copie profonde des données
+          const newData = JSON.parse(JSON.stringify(prevData));
           
-          // Chemin de stockage dans le bucket
-          const filePath = `documents/${fileName}`;
-          
-          // Upload du fichier
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('documents2')
-            .upload(filePath, file, {
-              cacheControl: '3600',
-              upsert: true
-            });
-          
-          if (uploadError) {
-            throw new Error(`Erreur lors de l'upload: ${uploadError.message}`);
+          // Vérifier si la fonderie existe dans les rapports
+          if (!newData.foundry_reports[document.foundryId]) {
+            newData.foundry_reports[document.foundryId] = [];
           }
           
-          // Récupérer l'URL publique du fichier
-          const { data: urlData } = await supabase.storage
-            .from('documents2')
-            .getPublicUrl(filePath);
+          // Ajouter le document à la fonderie
+          newData.foundry_reports[document.foundryId].unshift(newDocument);
           
-          const publicUrl = urlData?.publicUrl;
-          
-          if (!publicUrl) {
-            throw new Error("Impossible d'obtenir l'URL publique du fichier");
-          }
-          
-          // Mettre à jour le document avec l'URL et le chemin du fichier
-          const { data: updatedDoc, error: updateError } = await supabase
-            .from('documents')
-            .update({
-              url: publicUrl,
-              supabasePath: filePath,
-              format: fileExtension === 'pdf' ? 'pdf' : documentFormat
-            })
-            .eq('id', documentData.id)
-            .select();
-          
-          if (updateError) {
-            throw new Error(`Erreur lors de la mise à jour du document: ${updateError.message}`);
-          }
-          
-          // Mettre à jour l'objet documentData pour le retour
-          documentData.url = publicUrl;
-          documentData.supabasePath = filePath;
-          
-          // Si c'est un PDF, forcer le format à 'pdf'
-          if (fileExtension === 'pdf') {
-            documentData.format = 'pdf';
-          }
-        } catch (fileError) {
-          console.error("Erreur lors de la gestion du fichier:", fileError);
-          // Ne pas propager l'erreur, le document est déjà créé
-        }
+          return newData;
+        });
+      } else {
+        // Ajouter aux rapports généraux
+        setReportsData(prevData => {
+          const newData = JSON.parse(JSON.stringify(prevData));
+          newData.general_reports.unshift(newDocument);
+          return newData;
+        });
       }
       
-      // Mettre à jour le state en ajoutant le nouveau document
-      setReportsData(prevData => {
-        const newData = { ...prevData };
-        
-        if (documentData.foundryId) {
-          // Ajouter aux rapports de la fonderie
-          if (!newData.foundry_reports[documentData.foundryId]) {
-            newData.foundry_reports[documentData.foundryId] = [];
-          }
-          newData.foundry_reports[documentData.foundryId] = [
-            ...newData.foundry_reports[documentData.foundryId],
-            documentData
-          ];
-        } else {
-          // Ajouter aux rapports généraux
-          newData.general_reports = [...newData.general_reports, documentData];
-        }
-        
-        return newData;
-      });
-      
-      return documentData;
+      return newDocument;
     } catch (error) {
-      console.error("Erreur lors de l'ajout du document:", error);
+      console.error('Erreur lors de l\'ajout du document:', error);
       throw error;
     }
   };

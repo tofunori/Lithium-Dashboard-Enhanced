@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -37,17 +37,7 @@ import {
   ListItemAvatar,
   ListItemText,
   ListItemSecondaryAction,
-  Slider,
-  Dialog,
-  DialogTitle,
-  DialogContent,
-  DialogActions,
-  Tooltip,
-  Badge,
-  Menu,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails
+  Slider
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ArticleIcon from '@mui/icons-material/Article';
@@ -73,16 +63,6 @@ import { useAuth } from '../contexts/AuthContext';
 import useTranslation from '../hooks/useTranslation';
 import LoadingIndicator from './LoadingIndicator';
 import { supabase } from '../supabase';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-import {
-  webToPdfForm,
-  setWebToPdfForm,
-  setProcessingWebToPdf,
-  isProcessingWebToPdf,
-  setOpenWebToPdfDialog,
-  isOpenWebToPdfDialog
-} from '../utils/pdfUtils';
 
 // Récupérer l'icône appropriée selon le format
 const getFormatIcon = (format) => {
@@ -882,7 +862,7 @@ const ReportsView = ({ foundryId }) => {
           });
         }
       } else {
-        // Pour les pages web non-PDF, utiliser une approche directe
+        // Pour les pages web non-PDF, utiliser API de conversion
         setSnackbar({
           open: true,
           message: 'Conversion de la page web en PDF en cours...',
@@ -890,37 +870,56 @@ const ReportsView = ({ foundryId }) => {
         });
         
         try {
-          // Utiliser l'API pdf.online - gratuite et sans inscription
-          const apiUrl = `https://v2.convertapi.com/convert/web/to/pdf?secret=QK7U25cH3tlUmJ5L&url=${encodeURIComponent(webToPdfForm.url)}`;
+          // Utiliser l'API Hcti.io (HTML/CSS to Image) - gratuite avec limites
+          const HCTI_API_USER_ID = 'b1d7aad7-ef92-4c78-96c7-cf3cd79f64ed'; 
+          const HCTI_API_KEY = '65d89c8e-9f2c-44af-a1a2-e16e80b4a0cc';
           
-          setSnackbar({
-            open: true,
-            message: 'Génération du PDF en cours, veuillez patienter...',
-            severity: 'info'
+          // Premièrement: capturer la page web en image
+          const imageResponse = await fetch('https://hcti.io/v1/image', {
+            method: 'POST',
+            headers: {
+              'Authorization': 'Basic ' + btoa(HCTI_API_USER_ID + ':' + HCTI_API_KEY),
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              url: webToPdfForm.url,
+              viewport_width: 1200,
+              viewport_height: 1600,
+              full_page: true
+            })
           });
           
-          const response = await fetch(apiUrl);
-          
-          if (!response.ok) {
-            throw new Error(`Échec de la conversion: ${response.status} ${response.statusText}`);
+          if (!imageResponse.ok) {
+            throw new Error(`Échec de la conversion en image: ${imageResponse.status} ${imageResponse.statusText}`);
           }
           
-          const convertApiResult = await response.json();
+          const imageData = await imageResponse.json();
+          const imageUrl = imageData.url;
           
-          if (!convertApiResult.Files || !convertApiResult.Files.length) {
-            throw new Error("Aucun fichier retourné par l'API de conversion");
-          }
+          // Télécharger l'image
+          const imageDownloadResponse = await fetch(imageUrl);
+          const imageBlob = await imageDownloadResponse.blob();
           
-          // URL du PDF généré
-          const pdfUrl = convertApiResult.Files[0].Url;
+          // Convertir l'image en PDF
+          // Pour conserver la simplicité, nous allons créer un PDF avec jspdf
+          const img = new Image();
+          img.src = URL.createObjectURL(imageBlob);
           
-          // Télécharger le PDF
-          const pdfResponse = await fetch(pdfUrl);
-          if (!pdfResponse.ok) {
-            throw new Error(`Impossible de télécharger le PDF converti: ${pdfResponse.status}`);
-          }
+          await new Promise(resolve => {
+            img.onload = resolve;
+          });
           
-          const pdfBlob = await pdfResponse.blob();
+          // Créer le PDF et y ajouter l'image
+          const pdfDoc = new jspdf.jsPDF({
+            orientation: 'portrait',
+            unit: 'px',
+            format: [img.width, img.height]
+          });
+          
+          pdfDoc.addImage(img, 'JPEG', 0, 0, img.width, img.height);
+          
+          // Obtenir le blob du PDF
+          const pdfBlob = await pdfDoc.output('blob');
           
           // Stocker le PDF dans Supabase
           const timestamp = Date.now();
@@ -957,74 +956,25 @@ const ReportsView = ({ foundryId }) => {
             severity: 'success'
           });
         } catch (conversionError) {
-          console.error('Erreur lors de la conversion avec ConvertAPI:', conversionError);
-          
-          // Plan B: Utiliser une autre API de conversion
+          console.error('Erreur lors de la conversion web vers PDF:', conversionError);
+          // Utiliser une approche alternative avec api.html2pdf.app
           try {
+            // Essayer une autre API de conversion
+            const apiUrl = `https://api.html2pdf.app/v1/generate?url=${encodeURIComponent(webToPdfForm.url)}&apiKey=free`;
+            
             setSnackbar({
               open: true,
-              message: 'Tentative avec un service alternatif...',
+              message: 'Tentative avec un autre service de conversion...',
               severity: 'info'
             });
             
-            // API alternative: WebCapture
-            const altApiUrl = `https://api.apiflash.com/v1/urltoimage?access_key=4ce03dd1e8214a8e95d453e32259ede6&url=${encodeURIComponent(webToPdfForm.url)}&full_page=true&format=jpeg&quality=80&response_type=json`;
+            const response = await fetch(apiUrl);
             
-            const altResponse = await fetch(altApiUrl);
-            
-            if (!altResponse.ok) {
-              throw new Error(`Échec de la conversion alternative: ${altResponse.status}`);
+            if (!response.ok) {
+              throw new Error(`Échec de la conversion: ${response.status} ${response.statusText}`);
             }
             
-            const altResult = await altResponse.json();
-            
-            if (!altResult.url) {
-              throw new Error("URL de l'image non trouvée dans la réponse");
-            }
-            
-            // Télécharger l'image
-            const imageResponse = await fetch(altResult.url);
-            const imageBlob = await imageResponse.blob();
-            
-            // Créer un élément image
-            const img = new Image();
-            img.src = URL.createObjectURL(imageBlob);
-            
-            // Attendre que l'image soit chargée
-            await new Promise(resolve => {
-              img.onload = resolve;
-            });
-            
-            // Attention: nous allons utiliser la bibliothèque html2pdf.js qui doit être chargée
-            // Vérifier si html2pdf est disponible, sinon le charger
-            if (!window.html2pdf) {
-              // Charger html2pdf.js
-              const script = document.createElement('script');
-              script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-              document.head.appendChild(script);
-              
-              // Attendre que le script soit chargé
-              await new Promise(resolve => {
-                script.onload = resolve;
-              });
-            }
-            
-            // Créer un conteneur pour l'image
-            const container = document.createElement('div');
-            container.style.position = 'absolute';
-            container.style.left = '-9999px';
-            document.body.appendChild(container);
-            
-            // Ajouter l'image au DOM
-            container.appendChild(img);
-            
-            // Créer le PDF à partir de l'image
-            const pdfBlob = await window.html2pdf()
-              .from(container)
-              .outputPdf('blob');
-            
-            // Nettoyer le DOM
-            document.body.removeChild(container);
+            const pdfBlob = await response.blob();
             
             // Stocker le PDF dans Supabase
             const timestamp = Date.now();
@@ -1060,135 +1010,13 @@ const ReportsView = ({ foundryId }) => {
               message: 'Page web convertie en PDF avec le service alternatif',
               severity: 'success'
             });
-          } catch (altError) {
-            console.error('Échec également avec le service alternatif:', altError);
-            
-            // Plan C: Dernier recours, utiliser printJS si disponible
-            try {
-              setSnackbar({
-                open: true,
-                message: 'Dernière tentative de conversion en cours...',
-                severity: 'info'
-              });
-              
-              // Charger print-js si non disponible
-              if (!window.printJS) {
-                const scriptPrint = document.createElement('script');
-                scriptPrint.src = 'https://printjs-4de6.kxcdn.com/print.min.js';
-                document.head.appendChild(scriptPrint);
-                
-                // Charger aussi le CSS
-                const linkPrint = document.createElement('link');
-                linkPrint.rel = 'stylesheet';
-                linkPrint.href = 'https://printjs-4de6.kxcdn.com/print.min.css';
-                document.head.appendChild(linkPrint);
-                
-                // Attendre que le script soit chargé
-                await new Promise(resolve => {
-                  scriptPrint.onload = resolve;
-                });
-              }
-              
-              // Créer un iframe caché pour charger la page
-              const iframe = document.createElement('iframe');
-              iframe.style.position = 'absolute';
-              iframe.style.left = '-9999px';
-              iframe.style.width = '1200px';
-              iframe.style.height = '1600px';
-              document.body.appendChild(iframe);
-              
-              // Charger la page dans l'iframe
-              iframe.src = webToPdfForm.url;
-              
-              // Attendre que la page soit chargée
-              await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                  reject(new Error("Délai d'attente dépassé pour le chargement de la page"));
-                }, 20000);
-                
-                iframe.onload = () => {
-                  clearTimeout(timeout);
-                  resolve();
-                };
-              });
-              
-              // Convertir l'iframe en PDF
-              const iframeContent = iframe.contentDocument || iframe.contentWindow.document;
-              
-              // Utiliser html2canvas pour capturer l'iframe
-              if (!window.html2canvas) {
-                const html2canvasScript = document.createElement('script');
-                html2canvasScript.src = 'https://html2canvas.hertzen.com/dist/html2canvas.min.js';
-                document.head.appendChild(html2canvasScript);
-                
-                await new Promise(resolve => {
-                  html2canvasScript.onload = resolve;
-                });
-              }
-              
-              const canvas = await window.html2canvas(iframeContent.body);
-              
-              // Supprimer l'iframe
-              document.body.removeChild(iframe);
-              
-              // Créer un PDF à partir du canvas
-              if (!window.jspdf) {
-                const jspdfScript = document.createElement('script');
-                jspdfScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-                document.head.appendChild(jspdfScript);
-                
-                await new Promise(resolve => {
-                  jspdfScript.onload = resolve;
-                });
-              }
-              
-              const pdf = new window.jspdf.jsPDF();
-              pdf.addImage(canvas.toDataURL('image/jpeg'), 'JPEG', 0, 0, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight());
-              
-              const pdfBlob = pdf.output('blob');
-              
-              // Stocker le PDF dans Supabase
-              const timestamp = Date.now();
-              const safeTitle = webToPdfForm.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-              const fileName = `${timestamp}_${safeTitle}.pdf`;
-              
-              // Créer un fichier à partir du blob
-              const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-              
-              // Upload dans Supabase
-              const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('documents2')
-                .upload(`pdfs/${fileName}`, pdfFile, {
-                  cacheControl: '3600',
-                  upsert: true
-                });
-              
-              if (uploadError) {
-                throw new Error(`Erreur lors de l'upload: ${uploadError.message}`);
-              }
-              
-              // Récupérer l'URL publique
-              const { data: urlData } = await supabase.storage
-                .from('documents2')
-                .getPublicUrl(`pdfs/${fileName}`);
-              
-              fileUrl = urlData.publicUrl;
-              supabasePath = `pdfs/${fileName}`;
-              finalFormat = 'pdf';
-              
-              setSnackbar({
-                open: true,
-                message: 'Page web convertie en PDF avec succès',
-                severity: 'success'
-              });
-            } catch (finalError) {
-              console.error('Échec de toutes les tentatives de conversion:', finalError);
-              setSnackbar({
-                open: true,
-                message: `Impossible de convertir la page. Le lien sera enregistré comme référence externe.`,
-                severity: 'warning'
-              });
-            }
+          } catch (alternativeError) {
+            console.error('Échec également avec le service alternatif:', alternativeError);
+            setSnackbar({
+              open: true,
+              message: `Impossible de convertir la page. Le lien sera enregistré comme référence externe.`,
+              severity: 'warning'
+            });
           }
         }
       }

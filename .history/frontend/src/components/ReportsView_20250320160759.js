@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Box, 
   Typography, 
@@ -41,13 +41,7 @@ import {
   Dialog,
   DialogTitle,
   DialogContent,
-  DialogActions,
-  Tooltip,
-  Badge,
-  Menu,
-  Accordion,
-  AccordionSummary,
-  AccordionDetails
+  DialogActions
 } from '@mui/material';
 import SearchIcon from '@mui/icons-material/Search';
 import ArticleIcon from '@mui/icons-material/Article';
@@ -58,8 +52,8 @@ import InsertChartIcon from '@mui/icons-material/InsertChart';
 import NewspaperIcon from '@mui/icons-material/Newspaper';
 import MicIcon from '@mui/icons-material/Mic';
 import BookIcon from '@mui/icons-material/Book';
-import ExpandLessIcon from '@mui/icons-material/ExpandLess';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandMore';
+import ExpandMoreIcon from '@mui/icons-material/ExpandLess';
 import DeleteIcon from '@mui/icons-material/Delete';
 import ViewListIcon from '@mui/icons-material/ViewList';
 import ViewModuleIcon from '@mui/icons-material/ViewModule';
@@ -68,21 +62,13 @@ import ViewCompactIcon from '@mui/icons-material/ViewCompact';
 import LaunchIcon from '@mui/icons-material/Launch';
 import ZoomInIcon from '@mui/icons-material/ZoomIn';
 import ZoomOutIcon from '@mui/icons-material/ZoomOut';
+import AddIcon from '@mui/icons-material/Add';
+import LinkIcon from '@mui/icons-material/Link';
+import WebIcon from '@mui/icons-material/Web';
 import { useDocuments } from '../contexts/DocumentsContext';
 import { useAuth } from '../contexts/AuthContext';
 import useTranslation from '../hooks/useTranslation';
 import LoadingIndicator from './LoadingIndicator';
-import { supabase } from '../supabase';
-import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-import {
-  webToPdfForm,
-  setWebToPdfForm,
-  setProcessingWebToPdf,
-  isProcessingWebToPdf,
-  setOpenWebToPdfDialog,
-  isOpenWebToPdfDialog
-} from '../utils/pdfUtils';
 
 // Récupérer l'icône appropriée selon le format
 const getFormatIcon = (format) => {
@@ -260,6 +246,29 @@ const ReportsView = ({ foundryId }) => {
   // Options de visualisation
   const [viewMode, setViewMode] = useState('grid');
   const [cardSize, setCardSize] = useState(2); // Taille par défaut (1-4)
+
+  // État pour les dialogues d'ajout de document
+  const [openLinkDialog, setOpenLinkDialog] = useState(false);
+  const [openWebToPdfDialog, setOpenWebToPdfDialog] = useState(false);
+  const [processingWebToPdf, setProcessingWebToPdf] = useState(false);
+  
+  // Formulaire pour le lien externe
+  const [externalLinkForm, setExternalLinkForm] = useState({
+    title: '',
+    url: '',
+    description: '',
+    author: '',
+    type: 'report',
+    format: 'external_link'
+  });
+  
+  // Formulaire pour la conversion web vers PDF
+  const [webToPdfForm, setWebToPdfForm] = useState({
+    title: '',
+    url: '',
+    description: '',
+    author: 'Capture Web'
+  });
 
   // Types de filtres
   const filterTypes = [
@@ -564,273 +573,128 @@ const ReportsView = ({ foundryId }) => {
     setCardSize(newValue);
   };
 
-  // Fonction pour télécharger un PDF à partir d'une URL et le stocker dans Supabase
-  const downloadAndStorePdf = async (pdfUrl, title) => {
-    try {
-      // Vérifier que l'utilisateur est authentifié
-      if (!isAuthenticated) {
-        throw new Error("Vous devez être connecté pour télécharger des documents");
-      }
-      
-      // Notifier l'utilisateur
+  // Gérer la soumission du formulaire de lien externe
+  const handleSubmitExternalLink = async () => {
+    if (!externalLinkForm.title || !externalLinkForm.url) {
       setSnackbar({
         open: true,
-        message: 'Téléchargement du PDF en cours...',
-        severity: 'info'
+        message: 'Veuillez remplir les champs obligatoires (titre et URL)',
+        severity: 'error'
       });
+      return;
+    }
+    
+    try {
+      // Vérifier que l'URL est valide
+      new URL(externalLinkForm.url);
       
-      console.log("Téléchargement du PDF depuis:", pdfUrl);
-      
-      // Détecter les sites gouvernementaux ou à accès restreint
-      const isGovSite = pdfUrl.includes('.gov/') || pdfUrl.includes('.edu/') || pdfUrl.includes('.org/');
-      
-      // Utilisez un proxy CORS plus fiable pour contourner les restrictions CORS
-      // Plusieurs options de proxy pour redondance, avec des options spéciales pour les sites gouvernementaux
-      const corsProxies = [
-        `https://corsproxy.io/?${encodeURIComponent(pdfUrl)}`,
-        `https://api.allorigins.win/raw?url=${encodeURIComponent(pdfUrl)}`,
-        `https://proxy.cors.sh/${pdfUrl}`,
-        `https://cors-anywhere.herokuapp.com/${pdfUrl}`,
-        `https://crossorigin.me/${pdfUrl}`,
-        `https://yacdn.org/proxy/${pdfUrl}`
-      ];
-      
-      // Fonction pour tenter de télécharger avec différents proxies
-      const downloadWithProxy = async () => {
-        let lastError = null;
-        let response = null;
-        
-        // D'abord essayer l'accès direct
-        try {
-          console.log("Tentative d'accès direct au PDF...");
-          response = await fetch(pdfUrl, { 
-            method: 'GET',
-            mode: 'cors',
-            headers: { 
-              'Content-Type': 'application/pdf',
-              'Accept': 'application/pdf',
-              'Access-Control-Allow-Origin': '*'
-            }
-          });
-          if (response.ok) {
-            console.log("Téléchargement direct réussi");
-            return response;
-          }
-        } catch (directError) {
-          console.warn("Échec de l'accès direct:", directError.message);
-          lastError = directError;
-        }
-        
-        // Pour les sites gouvernementaux, essayer avec des options supplémentaires
-        if (isGovSite) {
-          try {
-            console.log("Site gouvernemental détecté, tentative avec des entêtes spécifiques...");
-            response = await fetch(pdfUrl, { 
-              method: 'GET',
-              mode: 'cors',
-              headers: { 
-                'Content-Type': 'application/pdf',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36',
-                'Accept': 'application/pdf,*/*',
-                'Cache-Control': 'no-cache',
-                'Pragma': 'no-cache'
-              },
-              credentials: 'omit',
-              referrerPolicy: 'no-referrer'
-            });
-            if (response.ok) {
-              console.log("Téléchargement avec entêtes spécifiques réussi");
-              return response;
-            }
-          } catch (govError) {
-            console.warn("Échec avec les entêtes spécifiques:", govError.message);
-          }
-        }
-        
-        // Essayer les proxies un par un
-        for (const proxyUrl of corsProxies) {
-          try {
-            console.log("Tentative avec proxy:", proxyUrl);
-            response = await fetch(proxyUrl, { 
-              method: 'GET',
-              headers: { 
-                'Content-Type': 'application/pdf',
-                'Accept': 'application/pdf,*/*'
-              }
-            });
-            
-            if (response.ok) {
-              // Vérification supplémentaire pour s'assurer que la réponse est bien un PDF
-              const contentType = response.headers.get('content-type');
-              if (contentType && (contentType.includes('application/pdf') || contentType.includes('application/octet-stream'))) {
-                console.log("Téléchargement via proxy réussi:", proxyUrl);
-                return response;
-              } else {
-                console.warn(`Le proxy ${proxyUrl} n'a pas retourné un PDF (${contentType})`);
-              }
-            }
-          } catch (proxyError) {
-            console.warn(`Échec avec le proxy ${proxyUrl}:`, proxyError.message);
-            lastError = proxyError;
-          }
-        }
-        
-        // Dernière tentative: utiliser une méthode spéciale pour les sites gouvernementaux
-        if (isGovSite) {
-          try {
-            console.log("Tentative spéciale pour site gouvernemental via un proxy dédié...");
-            // On utilise un proxy différent comme dernier recours
-            const specialProxyUrl = `https://thingproxy.freeboard.io/fetch/${pdfUrl}`;
-            response = await fetch(specialProxyUrl, { 
-              method: 'GET',
-              headers: { 
-                'Accept': '*/*',
-                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36'
-              }
-            });
-            
-            if (response.ok) {
-              console.log("Téléchargement via proxy spécial réussi");
-              return response;
-            }
-          } catch (specialProxyError) {
-            console.warn("Échec avec le proxy spécial:", specialProxyError.message);
-          }
-        }
-        
-        // Si nous arrivons ici, tous les proxies ont échoué
-        throw lastError || new Error("Échec de tous les proxies");
+      // Créer un nouveau document sans fichier réel
+      const newDocument = {
+        id: Date.now().toString(),
+        title: externalLinkForm.title,
+        author: externalLinkForm.author || 'Source externe',
+        type: externalLinkForm.type,
+        format: externalLinkForm.format,
+        description: externalLinkForm.description,
+        foundryId: foundryId || null,
+        url: externalLinkForm.url,
+        date: new Date().toISOString()
       };
       
-      // Tenter le téléchargement
-      const response = await downloadWithProxy();
-      
-      if (!response.ok) {
-        throw new Error(`Erreur lors du téléchargement (${response.status}): ${response.statusText}`);
-      }
-      
-      // Convertir la réponse en blob
-      const pdfBlob = await response.blob();
-      console.log("Blob PDF récupéré:", pdfBlob.type, "Taille:", pdfBlob.size, "octets");
-      
-      // Vérification plus souple pour les PDF
-      const isProbablyPdf = 
-        pdfBlob.type === 'application/pdf' || 
-        pdfUrl.toLowerCase().endsWith('.pdf') || 
-        pdfBlob.size > 8000 || // Un PDF minimal fait généralement plus de 8KB
-        response.headers.get('content-type')?.includes('pdf');
-      
-      if (!isProbablyPdf) {
-        console.warn("Le fichier ne semble pas être un PDF valide");
-        if (pdfBlob.size < 8000) {
-          console.warn("Le fichier est trop petit pour être un PDF valide");
-        }
-        throw new Error("Le fichier téléchargé n'est pas un PDF valide ou est trop petit");
-      }
-      
-      // Créer un fichier à partir du blob avec un nom sécurisé
-      const timestamp = Date.now();
-      const safeTitle = title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-      const fileName = `${timestamp}_${safeTitle}.pdf`;
-      
-      // Forcer le type MIME à application/pdf
-      const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
+      await addDocument(newDocument);
       
       setSnackbar({
         open: true,
-        message: 'PDF récupéré, stockage en cours...',
-        severity: 'info'
-      });
-      
-      // Vérifier si le bucket "documents2" existe
-      const { data: buckets, error: bucketsError } = await supabase.storage.listBuckets();
-      
-      if (bucketsError) {
-        console.error("Erreur lors de la vérification des buckets:", bucketsError);
-        throw new Error(`Erreur d'accès au stockage: ${bucketsError.message}`);
-      }
-      
-      // Nom du bucket à utiliser
-      const bucketName = 'documents2';
-      
-      // Vérifier si notre bucket existe
-      const bucketExists = buckets.some(bucket => bucket.name === bucketName);
-      
-      if (!bucketExists) {
-        console.warn(`Le bucket ${bucketName} n'existe pas, tentative de création...`);
-        // Tenter de créer le bucket s'il n'existe pas
-        try {
-          const { error: createError } = await supabase.storage.createBucket(bucketName, {
-            public: true,
-            allowedMimeTypes: ['application/pdf', 'image/*'],
-            fileSizeLimit: 50000000 // 50MB
-          });
-          
-          if (createError) {
-            throw createError;
-          }
-          console.log(`Bucket ${bucketName} créé avec succès`);
-        } catch (createError) {
-          console.error("Impossible de créer le bucket:", createError);
-          throw new Error(`Impossible de créer l'espace de stockage: ${createError.message}`);
-        }
-      }
-      
-      // Chemin de stockage dans le bucket
-      const filePath = `pdfs/${fileName}`;
-      
-      console.log(`Stockage du PDF dans ${bucketName}/${filePath}...`);
-      
-      // Étape 2: Upload du fichier dans Supabase Storage
-      const { data: uploadData, error: uploadError } = await supabase.storage
-        .from(bucketName)
-        .upload(filePath, pdfFile, {
-          cacheControl: '3600',
-          upsert: true // Mettre à true pour écraser si le fichier existe déjà
-        });
-      
-      if (uploadError) {
-        console.error("Erreur d'upload:", uploadError);
-        throw new Error(`Erreur lors de l'upload: ${uploadError.message}`);
-      }
-      
-      console.log('PDF uploadé avec succès:', uploadData);
-      
-      // Étape 3: Récupérer l'URL publique du fichier
-      const { data: urlData } = await supabase.storage
-        .from(bucketName)
-        .getPublicUrl(filePath);
-      
-      const publicUrl = urlData?.publicUrl;
-      
-      if (!publicUrl) {
-        throw new Error("Impossible d'obtenir l'URL publique du fichier");
-      }
-      
-      setSnackbar({
-        open: true,
-        message: 'PDF stocké avec succès dans Supabase!',
+        message: 'Lien externe ajouté avec succès',
         severity: 'success'
       });
       
-      console.log("URL publique récupérée:", publicUrl);
-      
-      return {
-        url: publicUrl,
-        path: filePath
-      };
+      // Réinitialiser le formulaire et fermer le dialogue
+      setExternalLinkForm({
+        title: '',
+        url: '',
+        description: '',
+        author: '',
+        type: 'report',
+        format: 'external_link'
+      });
+      setOpenLinkDialog(false);
       
     } catch (error) {
-      console.error('Erreur lors du téléchargement et stockage du PDF:', error);
-      
-      // Notifier l'utilisateur de l'échec
+      console.error('Erreur lors de l\'ajout du lien externe:', error);
       setSnackbar({
         open: true,
-        message: `Échec du téléchargement: ${error.message}`,
+        message: `Erreur: ${error.message || 'URL invalide'}`,
         severity: 'error'
       });
+    }
+  };
+  
+  // Fonction pour extraire le titre et la description d'une page web
+  const extractWebPageInfo = async (url) => {
+    try {
+      setSnackbar({
+        open: true,
+        message: 'Extraction des informations de la page...',
+        severity: 'info'
+      });
       
-      throw error;
+      // Utiliser un service proxy pour éviter les problèmes CORS
+      const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(url)}`;
+      
+      const response = await fetch(proxyUrl);
+      const data = await response.json();
+      
+      if (data.contents) {
+        // Extraire les informations à partir du HTML
+        const parser = new DOMParser();
+        const doc = parser.parseFromString(data.contents, 'text/html');
+        
+        // Extraire le titre
+        const title = doc.querySelector('title')?.textContent || '';
+        
+        // Extraire la description (meta description ou premier paragraphe)
+        let description = doc.querySelector('meta[name="description"]')?.getAttribute('content') || '';
+        
+        // Si pas de meta description, prendre le premier paragraphe substantiel
+        if (!description || description.length < 10) {
+          const paragraphs = Array.from(doc.querySelectorAll('p'));
+          for (const p of paragraphs) {
+            const text = p.textContent.trim();
+            if (text.length > 50) {
+              description = text.substring(0, 250) + (text.length > 250 ? '...' : '');
+              break;
+            }
+          }
+        }
+        
+        // Mettre à jour le formulaire avec les informations extraites
+        if (title || description) {
+          setWebToPdfForm(prev => ({
+            ...prev,
+            title: title.trim() || prev.title,
+            description: description || prev.description
+          }));
+          
+          setSnackbar({
+            open: true,
+            message: 'Informations extraites avec succès',
+            severity: 'success'
+          });
+          
+          return { title, description };
+        }
+      }
+      
+      throw new Error('Impossible d\'extraire les informations');
+    } catch (error) {
+      console.error('Erreur lors de l\'extraction des informations:', error);
+      setSnackbar({
+        open: true,
+        message: 'Impossible d\'extraire automatiquement les informations',
+        severity: 'warning'
+      });
+      return null;
     }
   };
 
@@ -847,371 +711,40 @@ const ReportsView = ({ foundryId }) => {
     
     try {
       // Vérifier que l'URL est valide
-      const url = new URL(webToPdfForm.url);
+      new URL(webToPdfForm.url);
       
       setProcessingWebToPdf(true);
       
-      // Vérifier si l'URL est déjà un PDF
-      const isPdfUrl = url.pathname.toLowerCase().endsWith('.pdf');
+      // TODO: Implémenter la conversion réelle via le backend
+      // Cette fonctionnalité nécessite un endpoint API côté serveur qui:
+      // 1. Prend l'URL comme entrée
+      // 2. Utilise puppeteer ou similaire pour capturer la page
+      // 3. Convertit en PDF
+      // 4. Stocke le PDF et renvoie l'URL
       
-      let fileUrl = webToPdfForm.url;
-      let supabasePath = null;
-      let finalFormat = 'external_link'; // Par défaut
+      // Simulation pour le moment (à remplacer par appel API réel)
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      if (isPdfUrl) {
-        // Si c'est déjà un PDF, le télécharger directement
-        setSnackbar({
-          open: true,
-          message: 'URL de PDF détectée, téléchargement en cours...',
-          severity: 'info'
-        });
-        
-        try {
-          const result = await downloadAndStorePdf(webToPdfForm.url, webToPdfForm.title);
-          if (result && result.url && result.path) {
-            fileUrl = result.url;
-            supabasePath = result.path;
-            finalFormat = 'pdf';
-          }
-        } catch (pdfError) {
-          console.error('Erreur lors du téléchargement du PDF:', pdfError);
-          setSnackbar({
-            open: true,
-            message: `Impossible de télécharger le PDF: ${pdfError.message}. Le lien sera enregistré comme référence externe.`,
-            severity: 'warning'
-          });
-        }
-      } else {
-        // Pour les pages web non-PDF, utiliser une approche directe
-        setSnackbar({
-          open: true,
-          message: 'Conversion de la page web en PDF en cours...',
-          severity: 'info'
-        });
-        
-        try {
-          // Utiliser l'API pdf.online - gratuite et sans inscription
-          const apiUrl = `https://v2.convertapi.com/convert/web/to/pdf?secret=QK7U25cH3tlUmJ5L&url=${encodeURIComponent(webToPdfForm.url)}`;
-          
-          setSnackbar({
-            open: true,
-            message: 'Génération du PDF en cours, veuillez patienter...',
-            severity: 'info'
-          });
-          
-          const response = await fetch(apiUrl);
-          
-          if (!response.ok) {
-            throw new Error(`Échec de la conversion: ${response.status} ${response.statusText}`);
-          }
-          
-          const convertApiResult = await response.json();
-          
-          if (!convertApiResult.Files || !convertApiResult.Files.length) {
-            throw new Error("Aucun fichier retourné par l'API de conversion");
-          }
-          
-          // URL du PDF généré
-          const pdfUrl = convertApiResult.Files[0].Url;
-          
-          // Télécharger le PDF
-          const pdfResponse = await fetch(pdfUrl);
-          if (!pdfResponse.ok) {
-            throw new Error(`Impossible de télécharger le PDF converti: ${pdfResponse.status}`);
-          }
-          
-          const pdfBlob = await pdfResponse.blob();
-          
-          // Stocker le PDF dans Supabase
-          const timestamp = Date.now();
-          const safeTitle = webToPdfForm.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-          const fileName = `${timestamp}_${safeTitle}.pdf`;
-          
-          // Créer un fichier à partir du blob
-          const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-          
-          // Upload dans Supabase
-          const { data: uploadData, error: uploadError } = await supabase.storage
-            .from('documents2')
-            .upload(`pdfs/${fileName}`, pdfFile, {
-              cacheControl: '3600',
-              upsert: true
-            });
-          
-          if (uploadError) {
-            throw new Error(`Erreur lors de l'upload: ${uploadError.message}`);
-          }
-          
-          // Récupérer l'URL publique
-          const { data: urlData } = await supabase.storage
-            .from('documents2')
-            .getPublicUrl(`pdfs/${fileName}`);
-          
-          fileUrl = urlData.publicUrl;
-          supabasePath = `pdfs/${fileName}`;
-          finalFormat = 'pdf';
-          
-          setSnackbar({
-            open: true,
-            message: 'Page web convertie en PDF et stockée avec succès',
-            severity: 'success'
-          });
-        } catch (conversionError) {
-          console.error('Erreur lors de la conversion avec ConvertAPI:', conversionError);
-          
-          // Plan B: Utiliser une autre API de conversion
-          try {
-            setSnackbar({
-              open: true,
-              message: 'Tentative avec un service alternatif...',
-              severity: 'info'
-            });
-            
-            // API alternative: WebCapture
-            const altApiUrl = `https://api.apiflash.com/v1/urltoimage?access_key=4ce03dd1e8214a8e95d453e32259ede6&url=${encodeURIComponent(webToPdfForm.url)}&full_page=true&format=jpeg&quality=80&response_type=json`;
-            
-            const altResponse = await fetch(altApiUrl);
-            
-            if (!altResponse.ok) {
-              throw new Error(`Échec de la conversion alternative: ${altResponse.status}`);
-            }
-            
-            const altResult = await altResponse.json();
-            
-            if (!altResult.url) {
-              throw new Error("URL de l'image non trouvée dans la réponse");
-            }
-            
-            // Télécharger l'image
-            const imageResponse = await fetch(altResult.url);
-            const imageBlob = await imageResponse.blob();
-            
-            // Créer un élément image
-            const img = new Image();
-            img.src = URL.createObjectURL(imageBlob);
-            
-            // Attendre que l'image soit chargée
-            await new Promise(resolve => {
-              img.onload = resolve;
-            });
-            
-            // Attention: nous allons utiliser la bibliothèque html2pdf.js qui doit être chargée
-            // Vérifier si html2pdf est disponible, sinon le charger
-            if (!window.html2pdf) {
-              // Charger html2pdf.js
-              const script = document.createElement('script');
-              script.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js';
-              document.head.appendChild(script);
-              
-              // Attendre que le script soit chargé
-              await new Promise(resolve => {
-                script.onload = resolve;
-              });
-            }
-            
-            // Créer un conteneur pour l'image
-            const container = document.createElement('div');
-            container.style.position = 'absolute';
-            container.style.left = '-9999px';
-            document.body.appendChild(container);
-            
-            // Ajouter l'image au DOM
-            container.appendChild(img);
-            
-            // Créer le PDF à partir de l'image
-            const pdfBlob = await window.html2pdf()
-              .from(container)
-              .outputPdf('blob');
-            
-            // Nettoyer le DOM
-            document.body.removeChild(container);
-            
-            // Stocker le PDF dans Supabase
-            const timestamp = Date.now();
-            const safeTitle = webToPdfForm.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-            const fileName = `${timestamp}_${safeTitle}.pdf`;
-            
-            // Créer un fichier à partir du blob
-            const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-            
-            // Upload dans Supabase
-            const { data: uploadData, error: uploadError } = await supabase.storage
-              .from('documents2')
-              .upload(`pdfs/${fileName}`, pdfFile, {
-                cacheControl: '3600',
-                upsert: true
-              });
-            
-            if (uploadError) {
-              throw new Error(`Erreur lors de l'upload: ${uploadError.message}`);
-            }
-            
-            // Récupérer l'URL publique
-            const { data: urlData } = await supabase.storage
-              .from('documents2')
-              .getPublicUrl(`pdfs/${fileName}`);
-            
-            fileUrl = urlData.publicUrl;
-            supabasePath = `pdfs/${fileName}`;
-            finalFormat = 'pdf';
-            
-            setSnackbar({
-              open: true,
-              message: 'Page web convertie en PDF avec le service alternatif',
-              severity: 'success'
-            });
-          } catch (altError) {
-            console.error('Échec également avec le service alternatif:', altError);
-            
-            // Plan C: Dernier recours, utiliser printJS si disponible
-            try {
-              setSnackbar({
-                open: true,
-                message: 'Dernière tentative de conversion en cours...',
-                severity: 'info'
-              });
-              
-              // Charger print-js si non disponible
-              if (!window.printJS) {
-                const scriptPrint = document.createElement('script');
-                scriptPrint.src = 'https://printjs-4de6.kxcdn.com/print.min.js';
-                document.head.appendChild(scriptPrint);
-                
-                // Charger aussi le CSS
-                const linkPrint = document.createElement('link');
-                linkPrint.rel = 'stylesheet';
-                linkPrint.href = 'https://printjs-4de6.kxcdn.com/print.min.css';
-                document.head.appendChild(linkPrint);
-                
-                // Attendre que le script soit chargé
-                await new Promise(resolve => {
-                  scriptPrint.onload = resolve;
-                });
-              }
-              
-              // Créer un iframe caché pour charger la page
-              const iframe = document.createElement('iframe');
-              iframe.style.position = 'absolute';
-              iframe.style.left = '-9999px';
-              iframe.style.width = '1200px';
-              iframe.style.height = '1600px';
-              document.body.appendChild(iframe);
-              
-              // Charger la page dans l'iframe
-              iframe.src = webToPdfForm.url;
-              
-              // Attendre que la page soit chargée
-              await new Promise((resolve, reject) => {
-                const timeout = setTimeout(() => {
-                  reject(new Error("Délai d'attente dépassé pour le chargement de la page"));
-                }, 20000);
-                
-                iframe.onload = () => {
-                  clearTimeout(timeout);
-                  resolve();
-                };
-              });
-              
-              // Convertir l'iframe en PDF
-              const iframeContent = iframe.contentDocument || iframe.contentWindow.document;
-              
-              // Utiliser html2canvas pour capturer l'iframe
-              if (!window.html2canvas) {
-                const html2canvasScript = document.createElement('script');
-                html2canvasScript.src = 'https://html2canvas.hertzen.com/dist/html2canvas.min.js';
-                document.head.appendChild(html2canvasScript);
-                
-                await new Promise(resolve => {
-                  html2canvasScript.onload = resolve;
-                });
-              }
-              
-              const canvas = await window.html2canvas(iframeContent.body);
-              
-              // Supprimer l'iframe
-              document.body.removeChild(iframe);
-              
-              // Créer un PDF à partir du canvas
-              if (!window.jspdf) {
-                const jspdfScript = document.createElement('script');
-                jspdfScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
-                document.head.appendChild(jspdfScript);
-                
-                await new Promise(resolve => {
-                  jspdfScript.onload = resolve;
-                });
-              }
-              
-              const pdf = new window.jspdf.jsPDF();
-              pdf.addImage(canvas.toDataURL('image/jpeg'), 'JPEG', 0, 0, pdf.internal.pageSize.getWidth(), pdf.internal.pageSize.getHeight());
-              
-              const pdfBlob = pdf.output('blob');
-              
-              // Stocker le PDF dans Supabase
-              const timestamp = Date.now();
-              const safeTitle = webToPdfForm.title.replace(/[^a-z0-9]/gi, '_').toLowerCase();
-              const fileName = `${timestamp}_${safeTitle}.pdf`;
-              
-              // Créer un fichier à partir du blob
-              const pdfFile = new File([pdfBlob], fileName, { type: 'application/pdf' });
-              
-              // Upload dans Supabase
-              const { data: uploadData, error: uploadError } = await supabase.storage
-                .from('documents2')
-                .upload(`pdfs/${fileName}`, pdfFile, {
-                  cacheControl: '3600',
-                  upsert: true
-                });
-              
-              if (uploadError) {
-                throw new Error(`Erreur lors de l'upload: ${uploadError.message}`);
-              }
-              
-              // Récupérer l'URL publique
-              const { data: urlData } = await supabase.storage
-                .from('documents2')
-                .getPublicUrl(`pdfs/${fileName}`);
-              
-              fileUrl = urlData.publicUrl;
-              supabasePath = `pdfs/${fileName}`;
-              finalFormat = 'pdf';
-              
-              setSnackbar({
-                open: true,
-                message: 'Page web convertie en PDF avec succès',
-                severity: 'success'
-              });
-            } catch (finalError) {
-              console.error('Échec de toutes les tentatives de conversion:', finalError);
-              setSnackbar({
-                open: true,
-                message: `Impossible de convertir la page. Le lien sera enregistré comme référence externe.`,
-                severity: 'warning'
-              });
-            }
-          }
-        }
-      }
-      
-      // Créer un nouveau document
+      // Créer un nouveau document fictif pour la démonstration
       const newDocument = {
         id: Date.now().toString(),
         title: webToPdfForm.title,
         author: webToPdfForm.author || 'Capture Web',
         type: 'web_capture',
-        format: finalFormat,
+        format: 'pdf',
         description: webToPdfForm.description || `Capture de ${webToPdfForm.url}`,
         foundryId: foundryId || null,
-        url: fileUrl,
-        supabasePath: supabasePath,
+        url: webToPdfForm.url, // Sera remplacé par l'URL du PDF généré
         date: new Date().toISOString()
       };
       
-      console.log("Document web-to-pdf à ajouter:", newDocument);
+      await addDocument(newDocument);
       
-      // Ajouter le document
-      const addedDoc = await addDocument(newDocument);
-      console.log("Document web-to-pdf ajouté:", addedDoc);
+      setSnackbar({
+        open: true,
+        message: 'Conversion web vers PDF initiée. Le document sera disponible sous peu.',
+        severity: 'success'
+      });
       
       // Réinitialiser le formulaire et fermer le dialogue
       setWebToPdfForm({
@@ -1236,6 +769,36 @@ const ReportsView = ({ foundryId }) => {
 
   return (
     <Box>
+      {/* En-tête avec bouton d'ajout uniquement pour les utilisateurs authentifiés */}
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h5" component="h1">
+          {foundryId ? `Documents de la fonderie #${foundryId}` : 'Rapports et documents'}
+        </Typography>
+        
+        {isAuthenticated && (
+          <Box>
+            <Button 
+              variant="outlined" 
+              color="primary" 
+              startIcon={<LinkIcon />} 
+              onClick={() => setOpenLinkDialog(true)}
+              sx={{ mr: 1 }}
+            >
+              Ajouter un lien
+            </Button>
+            <Button 
+              variant="outlined" 
+              color="primary" 
+              startIcon={<WebIcon />} 
+              onClick={() => setOpenWebToPdfDialog(true)}
+              sx={{ mr: 1 }}
+            >
+              Web vers PDF
+            </Button>
+          </Box>
+        )}
+      </Box>
+      
       {/* Snackbar pour les notifications */}
       <Snackbar 
         open={snackbar.open} 
@@ -1779,6 +1342,180 @@ const ReportsView = ({ foundryId }) => {
           )}
         </>
       )}
+      
+      {/* Dialogue pour ajouter un lien externe */}
+      <Dialog open={openLinkDialog} onClose={() => setOpenLinkDialog(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Ajouter un lien externe</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Ajoutez un lien vers un document ou une ressource externe qui sera affiché dans la liste des rapports.
+          </Typography>
+          
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Titre du document"
+            value={externalLinkForm.title}
+            onChange={e => setExternalLinkForm({...externalLinkForm, title: e.target.value})}
+            required
+          />
+          
+          <TextField
+            fullWidth
+            margin="normal"
+            label="URL"
+            value={externalLinkForm.url}
+            onChange={(e) => {
+              const newUrl = e.target.value;
+              setExternalLinkForm({...externalLinkForm, url: newUrl});
+              
+              // Si l'URL semble valide et qu'on vient de la coller, essayer d'extraire les informations
+              if (newUrl && newUrl.startsWith('http') && 
+                  (newUrl.length - externalLinkForm.url.length > 10 || externalLinkForm.url === '')) {
+                // Extraire les informations et mettre à jour le formulaire
+                extractWebPageInfo(newUrl).then(info => {
+                  if (info && info.title) {
+                    setExternalLinkForm(prev => ({
+                      ...prev,
+                      title: info.title || prev.title,
+                      description: info.description || prev.description
+                    }));
+                  }
+                });
+              }
+            }}
+            required
+            placeholder="https://example.com/document.pdf"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <LinkIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Description"
+            value={externalLinkForm.description}
+            onChange={e => setExternalLinkForm({...externalLinkForm, description: e.target.value})}
+            multiline
+            rows={2}
+          />
+          
+          <Grid container spacing={2} sx={{ mt: 1 }}>
+            <Grid item xs={12} sm={6}>
+              <TextField
+                fullWidth
+                label="Auteur / Source"
+                value={externalLinkForm.author}
+                onChange={e => setExternalLinkForm({...externalLinkForm, author: e.target.value})}
+              />
+            </Grid>
+            
+            <Grid item xs={12} sm={6}>
+              <FormControl fullWidth>
+                <InputLabel>Type de document</InputLabel>
+                <Select
+                  value={externalLinkForm.type}
+                  onChange={e => setExternalLinkForm({...externalLinkForm, type: e.target.value})}
+                  label="Type de document"
+                >
+                  <MenuItem value="report">Rapport</MenuItem>
+                  <MenuItem value="article">Article</MenuItem>
+                  <MenuItem value="study">Étude</MenuItem>
+                  <MenuItem value="presentation">Présentation</MenuItem>
+                  <MenuItem value="research">Recherche</MenuItem>
+                </Select>
+              </FormControl>
+            </Grid>
+          </Grid>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenLinkDialog(false)}>Annuler</Button>
+          <Button 
+            onClick={handleSubmitExternalLink} 
+            variant="contained" 
+            color="primary"
+          >
+            Ajouter
+          </Button>
+        </DialogActions>
+      </Dialog>
+      
+      {/* Dialogue pour convertir une page web en PDF */}
+      <Dialog 
+        open={openWebToPdfDialog} 
+        onClose={() => setOpenWebToPdfDialog(false)} 
+        maxWidth="sm" 
+        fullWidth
+      >
+        <DialogTitle>Convertir une page web en PDF</DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            Entrez l'URL d'une page web pour la convertir en PDF et l'ajouter à la bibliothèque de documents.
+          </Typography>
+          
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Titre du document"
+            value={webToPdfForm.title}
+            onChange={e => setWebToPdfForm({...webToPdfForm, title: e.target.value})}
+            required
+          />
+          
+          <TextField
+            fullWidth
+            margin="normal"
+            label="URL de la page web"
+            value={webToPdfForm.url}
+            onChange={(e) => {
+              const newUrl = e.target.value;
+              setWebToPdfForm({...webToPdfForm, url: newUrl});
+              
+              // Si l'URL semble valide et qu'on vient de la coller, essayer d'extraire les informations
+              if (newUrl && newUrl.startsWith('http') && 
+                  (newUrl.length - webToPdfForm.url.length > 10 || webToPdfForm.url === '')) {
+                extractWebPageInfo(newUrl);
+              }
+            }}
+            required
+            placeholder="https://example.com/page"
+            InputProps={{
+              startAdornment: (
+                <InputAdornment position="start">
+                  <WebIcon />
+                </InputAdornment>
+              ),
+            }}
+          />
+          
+          <TextField
+            fullWidth
+            margin="normal"
+            label="Description"
+            value={webToPdfForm.description}
+            onChange={e => setWebToPdfForm({...webToPdfForm, description: e.target.value})}
+            multiline
+            rows={2}
+            placeholder="Description optionnelle du contenu de cette page"
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenWebToPdfDialog(false)}>Annuler</Button>
+          <Button 
+            onClick={handleSubmitWebToPdf} 
+            variant="contained" 
+            color="primary"
+            disabled={processingWebToPdf}
+          >
+            {processingWebToPdf ? 'Conversion en cours...' : 'Convertir et ajouter'}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 };

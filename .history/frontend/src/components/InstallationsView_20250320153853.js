@@ -34,7 +34,6 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import useTranslation from '../hooks/useTranslation';
 import { useRefineries } from '../contexts/RefineryContext';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../contexts/AuthContext';
 
 // Statuts disponibles pour les fonderies
 const availableStatuses = [
@@ -63,7 +62,6 @@ const InstallationsView = () => {
     deleteRefinery 
   } = useRefineries();
   const navigate = useNavigate();
-  const { isAuthenticated } = useAuth();
 
   const [openDialog, setOpenDialog] = useState(false);
   const [editMode, setEditMode] = useState(false);
@@ -92,16 +90,6 @@ const InstallationsView = () => {
   
   // Gérer l'ouverture du dialogue
   const handleOpenDialog = (refinery = null) => {
-    // Vérifier si l'utilisateur est authentifié
-    if (!isAuthenticated) {
-      setSnackbar({
-        open: true,
-        message: 'Vous devez être connecté pour modifier les raffineries',
-        severity: 'error'
-      });
-      return;
-    }
-    
     if (refinery) {
       // Mode édition
       setEditMode(true);
@@ -164,16 +152,6 @@ const InstallationsView = () => {
   
   // Sauvegarder une raffinerie (ajout ou modification)
   const handleSaveRefinery = () => {
-    // Vérifier si l'utilisateur est authentifié
-    if (!isAuthenticated) {
-      setSnackbar({
-        open: true,
-        message: 'Vous devez être connecté pour enregistrer des modifications',
-        severity: 'error'
-      });
-      return;
-    }
-    
     // Vérifier les champs obligatoires
     if (!formData.name || !formData.location || !formData.status) {
       setSnackbar({
@@ -209,16 +187,6 @@ const InstallationsView = () => {
   
   // Supprimer une raffinerie
   const handleDeleteRefinery = (id) => {
-    // Vérifier si l'utilisateur est authentifié
-    if (!isAuthenticated) {
-      setSnackbar({
-        open: true,
-        message: 'Vous devez être connecté pour supprimer une raffinerie',
-        severity: 'error'
-      });
-      return;
-    }
-    
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette raffinerie ?')) {
       deleteRefinery(id);
       
@@ -254,16 +222,14 @@ const InstallationsView = () => {
         <Typography variant="h5" component="h1">
           {t('plants_list')}
         </Typography>
-        {isAuthenticated && (
-          <Button 
-            variant="contained" 
-            color="primary" 
-            startIcon={<AddIcon />}
-            onClick={() => handleOpenDialog()}
-          >
-            Ajouter une raffinerie
-          </Button>
-        )}
+        <Button 
+          variant="contained" 
+          color="primary" 
+          startIcon={<AddIcon />}
+          onClick={() => handleOpenDialog()}
+        >
+          Ajouter une raffinerie
+        </Button>
       </Box>
       
       {loading ? (
@@ -340,28 +306,24 @@ const InstallationsView = () => {
                       </TableCell>
                       <TableCell>{refinery.production || 'N/A'}</TableCell>
                       <TableCell>
-                        {isAuthenticated && (
-                          <>
-                            <Tooltip title="Modifier">
-                              <IconButton 
-                                size="small" 
-                                color="primary"
-                                onClick={() => handleOpenDialog(refinery)}
-                              >
-                                <EditIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                            <Tooltip title="Supprimer">
-                              <IconButton 
-                                size="small" 
-                                color="error"
-                                onClick={() => handleDeleteRefinery(refinery.id)}
-                              >
-                                <DeleteIcon fontSize="small" />
-                              </IconButton>
-                            </Tooltip>
-                          </>
-                        )}
+                        <Tooltip title="Modifier">
+                          <IconButton 
+                            size="small" 
+                            color="primary"
+                            onClick={() => handleOpenDialog(refinery)}
+                          >
+                            <EditIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
+                        <Tooltip title="Supprimer">
+                          <IconButton 
+                            size="small" 
+                            color="error"
+                            onClick={() => handleDeleteRefinery(refinery.id)}
+                          >
+                            <DeleteIcon fontSize="small" />
+                          </IconButton>
+                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))

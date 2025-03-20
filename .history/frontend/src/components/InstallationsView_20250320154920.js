@@ -92,16 +92,6 @@ const InstallationsView = () => {
   
   // Gérer l'ouverture du dialogue
   const handleOpenDialog = (refinery = null) => {
-    // Vérifier si l'utilisateur est authentifié
-    if (!isAuthenticated) {
-      setSnackbar({
-        open: true,
-        message: 'Vous devez être connecté pour modifier les raffineries',
-        severity: 'error'
-      });
-      return;
-    }
-    
     if (refinery) {
       // Mode édition
       setEditMode(true);
@@ -164,16 +154,6 @@ const InstallationsView = () => {
   
   // Sauvegarder une raffinerie (ajout ou modification)
   const handleSaveRefinery = () => {
-    // Vérifier si l'utilisateur est authentifié
-    if (!isAuthenticated) {
-      setSnackbar({
-        open: true,
-        message: 'Vous devez être connecté pour enregistrer des modifications',
-        severity: 'error'
-      });
-      return;
-    }
-    
     // Vérifier les champs obligatoires
     if (!formData.name || !formData.location || !formData.status) {
       setSnackbar({
@@ -209,16 +189,6 @@ const InstallationsView = () => {
   
   // Supprimer une raffinerie
   const handleDeleteRefinery = (id) => {
-    // Vérifier si l'utilisateur est authentifié
-    if (!isAuthenticated) {
-      setSnackbar({
-        open: true,
-        message: 'Vous devez être connecté pour supprimer une raffinerie',
-        severity: 'error'
-      });
-      return;
-    }
-    
     if (window.confirm('Êtes-vous sûr de vouloir supprimer cette raffinerie ?')) {
       deleteRefinery(id);
       

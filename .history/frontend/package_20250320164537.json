@@ -13,10 +13,6 @@
     "@testing-library/user-event": "^13.5.0",
     "cross-env": "^7.0.3",
     "firebase": "^10.14.1",
-    "html2canvas": "^1.4.1",
-    "html2pdf.js": "^0.10.3",
-    "jspdf": "^3.0.1",
-    "jspdf-autotable": "^5.0.2",
     "leaflet": "^1.9.4",
     "maplibre-gl": "^5.2.0",
     "ol": "^10.4.0",
@@ -30,8 +26,8 @@
     "web-vitals": "^2.1.4"
   },
   "scripts": {
-    "start": "cross-env DANGEROUSLY_DISABLE_HOST_CHECK=true PORT=3004 react-scripts start",
-    "start:alt": "cross-env PORT=3004 DANGEROUSLY_DISABLE_HOST_CHECK=true react-scripts start",
+    "start": "react-scripts start",
+    "start:alt": "cross-env PORT=3001 react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject"
@@ -56,9 +52,6 @@
   },
   "proxy": "http://localhost:8000",
   "devDependencies": {
-    "@vitejs/plugin-react": "^4.2.1",
-    "cross-env": "^7.0.3",
-    "react-scripts": "^5.0.1",
-    "vite": "^5.0.12"
+    "react-scripts": "^5.0.1"
   }
 }

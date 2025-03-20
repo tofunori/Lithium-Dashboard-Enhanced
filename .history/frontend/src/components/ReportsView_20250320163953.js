@@ -74,15 +74,6 @@ import useTranslation from '../hooks/useTranslation';
 import LoadingIndicator from './LoadingIndicator';
 import { supabase } from '../supabase';
 import { jsPDF } from 'jspdf';
-import 'jspdf-autotable';
-import {
-  webToPdfForm,
-  setWebToPdfForm,
-  setProcessingWebToPdf,
-  isProcessingWebToPdf,
-  setOpenWebToPdfDialog,
-  isOpenWebToPdfDialog
-} from '../utils/pdfUtils';
 
 // Récupérer l'icône appropriée selon le format
 const getFormatIcon = (format) => {

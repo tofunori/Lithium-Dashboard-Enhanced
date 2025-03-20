@@ -1,0 +1,3 @@
+@echo off
+echo Démarrage du serveur de développement sur le port 3001...
+"C:\Program Files\nodejs\node.exe" "%~dp0dev-server.js" 
