@@ -12,7 +12,6 @@ import { useSettings } from '../App';
 import useTranslation from '../hooks/useTranslation';
 import { Link } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
-import { useRefineries } from '../contexts/RefineryContext';
 
 // Correction pour les icônes Leaflet
 delete L.Icon.Default.prototype._getIconUrl;

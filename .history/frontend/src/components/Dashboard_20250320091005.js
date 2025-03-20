@@ -29,7 +29,6 @@ import BarChartIcon from '@mui/icons-material/BarChart';
 import TableChartIcon from '@mui/icons-material/TableChart';
 import MapIcon from '@mui/icons-material/Map';
 import FlagIcon from '@mui/icons-material/Flag';
-import PieChartIcon from '@mui/icons-material/PieChart';
 import {
   BarChart,
   Bar,
@@ -47,22 +46,6 @@ import MapView from './MapView';
 import useTranslation from '../hooks/useTranslation';
 import { refineryData } from '../data/refineryData';
 import { useRefineries } from '../contexts/RefineryContext';
-
-// Obtenir la couleur correspondant au statut de l'installation
-const getStatusColor = (status, shade = 'main') => {
-  if (!status) return '#999999';
-  
-  const colors = {
-    'Opérationnel': { main: '#00AA00', light: '#e6f7e6', dark: '#007700' },
-    'En construction': { main: '#1976D2', light: '#e3f2fd', dark: '#0d47a1' },
-    'Planifié': { main: '#FFA500', light: '#fff8e1', dark: '#e65100' },
-    'En pause': { main: '#FF0000', light: '#ffebee', dark: '#c62828' },
-    'Approuvé': { main: '#9C27B0', light: '#f3e5f5', dark: '#7b1fa2' },
-    'En suspens': { main: '#FF9800', light: '#fff3e0', dark: '#e65100' }
-  };
-  
-  return colors[status] ? colors[status][shade] : '#999999';
-};
 
 // Préparer les données pour les installations en format compatible avec la carte
 const prepareMapData = (refineries) => {
@@ -210,6 +193,11 @@ const Dashboard = () => {
   const statusData = formatPlantStatusData();
   const countryData = formatPlantCountryData();
 
+  // Obtenir la couleur de statut pour l'affichage des puces
+  const getStatusColor = (status) => {
+    return refineryData.status_colors[status] || "#999999";
+  };
+
   // Afficher la table des raffineries
   const renderDataTable = () => {
     if (loading) {
@@ -299,68 +287,217 @@ const Dashboard = () => {
             </Tabs>
           </Box>
 
-          {/* Contenu des onglets */}
-          <Box sx={{ p: 3 }}>
-            {activeTab === 0 && renderDataTable()}
-            
-            {activeTab === 1 && (
-              <Box>
-                <Typography variant="h6" gutterBottom>Répartition des installations par statut</Typography>
-                <ResponsiveContainer width="100%" height={400}>
-                  <PieChart>
-                    <Pie
-                      data={statusData}
-                      cx="50%"
-                      cy="50%"
-                      labelLine={true}
-                      label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
-                      outerRadius={150}
-                      fill="#8884d8"
-                      dataKey="value"
-                    >
-                      {statusData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={getStatusColor(entry.name)} />
-                      ))}
-                    </Pie>
-                    <RechartsTooltip formatter={(value) => [`${value} installations`]} />
-                    <Legend />
-                  </PieChart>
-                </ResponsiveContainer>
-              </Box>
-            )}
-            
-            {activeTab === 2 && (
-              <Box>
-                <Typography variant="h6" gutterBottom>Répartition des installations par pays</Typography>
-                <ResponsiveContainer width="100%" height={400}>
-                  <BarChart
-                    data={countryData}
-                    margin={{
-                      top: 20,
-                      right: 30,
-                      left: 20,
-                      bottom: 5,
-                    }}
-                  >
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" />
-                    <YAxis />
-                    <RechartsTooltip />
-                    <Bar dataKey="value" name="Nombre d'installations">
-                      {countryData.map((entry, index) => (
-                        <Cell 
-                          key={`cell-${index}`} 
-                          fill={index % 2 === 0 ? theme.palette.primary.main : theme.palette.secondary.main} 
-                        />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </Box>
-            )}
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <FlagIcon sx={{ fontSize: 16, mr: 0.75, color: 'text.secondary', opacity: 0.7 }} />
+                    <Typography variant="body2">{row.location}</Typography>
+                  </Box>
+                </TableCell>
+                <TableCell>
+                  <Chip 
+                    label={row.status} 
+                    size="small" 
+                    sx={{ 
+                      bgcolor: `${getStatusColor(row.status)}20`, 
+                      color: getStatusColor(row.status),
+                      fontWeight: 500,
+                      fontSize: '0.75rem'
+                    }} 
+                  />
+                </TableCell>
+                <TableCell>{row.production}</TableCell>
+                <TableCell>
+                  <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>{row.processing}</Typography>
+                </TableCell>
+                <TableCell>
+                  <Box sx={{ display: 'flex' }}>
+                    <Tooltip title="Plus d'informations">
+                      <IconButton 
+                        size="small" 
+                        color="primary" 
+                        component={Link} 
+                        to={`/fonderie/${row.id}`} 
+                      >
+                        <InfoIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                    <Tooltip title="Visiter le site web">
+                      <IconButton size="small" color="primary" component="a" href={row.website} target="_blank">
+                        <LanguageIcon fontSize="small" />
+                      </IconButton>
+                    </Tooltip>
+                  </Box>
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </TableContainer>
+    );
+  };
+
+  // Rendre le graphique de statut
+  const renderStatusChart = () => {
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <PieChart>
+          <Pie
+            data={statusChartData}
+            cx="50%"
+            cy="50%"
+            labelLine={true}
+            label={({ name, percent }) => `${name}: ${(percent * 100).toFixed(0)}%`}
+            outerRadius={80}
+            fill="#8884d8"
+            dataKey="value"
+          >
+            {statusChartData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Pie>
+          <RechartsTooltip formatter={(value, name) => [`${value} installations`, name]} />
+          <Legend />
+        </PieChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  // Rendre le graphique par pays
+  const renderCountryChart = () => {
+    return (
+      <ResponsiveContainer width="100%" height={300}>
+        <BarChart
+          data={countryChartData}
+          margin={{
+            top: 5,
+            right: 30,
+            left: 20,
+            bottom: 5,
+          }}
+        >
+          <CartesianGrid strokeDasharray="3 3" />
+          <XAxis dataKey="name" />
+          <YAxis />
+          <RechartsTooltip formatter={(value) => [`${value} installations`]} />
+          <Legend />
+          <Bar dataKey="value" name="Nombre d'installations">
+            {countryChartData.map((entry, index) => (
+              <Cell key={`cell-${index}`} fill={entry.color} />
+            ))}
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    );
+  };
+
+  return (
+    <Box sx={{ py: 3, px: { xs: 2, md: 3 } }}>
+      <Grid container spacing={3}>
+        {/* Header avec titre et sous-titre */}
+        <Grid item xs={12}>
+          <Box sx={{ mb: 3 }}>
+            <Typography variant="h4" component="h1" gutterBottom fontWeight="600" color="primary.dark">
+              {t('dashboard_title')}
+            </Typography>
+            <Typography variant="subtitle1" color="text.secondary">
+              {t('subtitle')} • <Typography component="span" variant="subtitle1" color="primary">Version {refineryData.version}</Typography>
+            </Typography>
           </Box>
-        </Box>
-      </Paper>
+        </Grid>
+        
+        {/* Texte d'introduction */}
+        <Grid item xs={12}>
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              p: 3, 
+              borderRadius: '12px', 
+              boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)',
+              mb: 3
+            }}
+          >
+            <Typography variant="body1" paragraph>
+              Bienvenue sur le tableau de bord de surveillance des installations de recyclage de lithium en Amérique du Nord. Cette plateforme cartographie et centralise les informations sur les principales installations de traitement des batteries lithium-ion en fin de vie.
+            </Typography>
+            <Typography variant="body1">
+              La carte ci-dessous présente <strong>{refineries.length} installations</strong> réparties entre le Canada et les États-Unis. Les marqueurs sont colorés selon leur statut : <span style={{color: '#00AA00'}}>opérationnels</span>, <span style={{color: '#0000FF'}}>en construction</span>, <span style={{color: '#FFA500'}}>planifiés</span> ou <span style={{color: '#FF0000'}}>en pause</span>. Cliquez sur un marqueur pour plus de détails sur l'installation ou explorez les analyses détaillées dans les onglets ci-dessous.
+            </Typography>
+          </Paper>
+        </Grid>
+
+        {/* Carte principale - occupe toute la largeur */}
+        <Grid item xs={12}>
+          <Paper 
+            elevation={0} 
+            sx={{ 
+              ...paperStyle, 
+              p: 0,
+              overflow: 'hidden'
+            }}
+          >
+            <Box sx={{ 
+              height: `${mapHeight}px`,
+              width: '100%',
+              transition: 'height 0.3s ease'
+            }}>
+              <MapView plants={mapData} onResize={resizeMapHeight} />
+            </Box>
+          </Paper>
+        </Grid>
+
+        {/* Onglets pour alterner entre graphiques et tableau */}
+        <Grid item xs={12}>
+          <Paper elevation={0} sx={{ ...paperStyle, p: 0 }}>
+            <Box sx={{ borderBottom: 1, borderColor: 'divider' }}>
+              <Tabs 
+                value={activeTab} 
+                onChange={handleTabChange}
+                variant="scrollable"
+                scrollButtons="auto"
+                sx={{ 
+                  px: 2,
+                  '& .MuiTab-root': {
+                    minHeight: '56px',
+                    textTransform: 'none',
+                    fontWeight: 500
+                  }
+                }}
+              >
+                <Tab icon={<TableChartIcon />} iconPosition="start" label="Tableau des installations" />
+                <Tab icon={<BarChartIcon />} iconPosition="start" label="Analyse par statut" />
+                <Tab icon={<MapIcon />} iconPosition="start" label="Analyse par pays" />
+              </Tabs>
+            </Box>
+            
+            {/* Contenu des onglets */}
+            <Box sx={{ p: 3 }}>
+              {activeTab === 0 && renderDataTable()}
+              
+              {activeTab === 1 && (
+                <Box>
+                  <Typography variant="h6" gutterBottom>Répartition des installations par statut</Typography>
+                  {renderStatusChart()}
+                </Box>
+              )}
+              
+              {activeTab === 2 && (
+                <Box>
+                  <Typography variant="h6" gutterBottom>Répartition des installations par pays</Typography>
+                  {renderCountryChart()}
+                </Box>
+              )}
+            </Box>
+          </Paper>
+        </Grid>
+
+        {/* Footer avec informations de source */}
+        <Grid item xs={12}>
+          <Box sx={{ mt: 2, textAlign: 'center' }}>
+            <Typography variant="body2" color="text.secondary">
+              Données compilées par le Centre d'Innovation en Recyclage de Batteries • Dernière mise à jour: {refineryData.version}
+            </Typography>
+          </Box>
+        </Grid>
+      </Grid>
     </Box>
   );
 };

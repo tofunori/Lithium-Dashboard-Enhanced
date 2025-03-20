@@ -12,7 +12,6 @@ import { useSettings } from '../App';
 import useTranslation from '../hooks/useTranslation';
 import { Link } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
-import { useRefineries } from '../contexts/RefineryContext';
 
 // Correction pour les icônes Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -113,48 +112,45 @@ const MapLegend = () => {
       <Typography variant="caption" sx={{ fontSize: '0.8rem', display: 'block', mb: 1 }}>
         La taille des points varie selon la production annuelle de chaque raffinerie.
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', mb: 0.5 }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Box 
             sx={{ 
-              width: 10, 
-              height: 10, 
+              width: 8, 
+              height: 8, 
               borderRadius: '50%', 
               backgroundColor: 'grey',
-              border: '1px solid rgba(0, 0, 0, 0.2)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              mb: 0.5
+              mr: 0.5,
+              border: '1px solid rgba(0, 0, 0, 0.1)'
             }} 
           />
-          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Faible</Typography>
+          <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>Petite</Typography>
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Box 
             sx={{ 
-              width: 20, 
-              height: 20, 
+              width: 12, 
+              height: 12, 
               borderRadius: '50%', 
               backgroundColor: 'grey',
-              border: '1px solid rgba(0, 0, 0, 0.2)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              mb: 0.5
+              mr: 0.5,
+              border: '1px solid rgba(0, 0, 0, 0.1)'
             }} 
           />
-          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Moyenne</Typography>
+          <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>Moyenne</Typography>
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Box 
             sx={{ 
-              width: 30, 
-              height: 30, 
+              width: 16, 
+              height: 16, 
               borderRadius: '50%', 
               backgroundColor: 'grey',
-              border: '1px solid rgba(0, 0, 0, 0.2)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              mb: 0.5
+              mr: 0.5,
+              border: '1px solid rgba(0, 0, 0, 0.1)'
             }} 
           />
-          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Élevée</Typography>
+          <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>Grande</Typography>
         </Box>
       </Box>
     </Paper>
@@ -256,10 +252,9 @@ const MapMarkers = ({ plants, settings }) => {
         
         // Calculer la taille de l'icône en fonction de la production
         const production = extractProduction(plant.production);
-        
-        // Amplifier les différences en utilisant un facteur plus important (entre 0.5 et 3.0)
+        // Un facteur entre 0.6 et 2.0 pour des différences plus visibles
         const sizeFactor = maxProduction > 0 
-          ? 0.5 + Math.sqrt(production / maxProduction) * 2.5
+          ? 0.6 + (production / maxProduction) * 1.4
           : 1;
         
         // Debug: afficher la production et le facteur de taille dans la console
@@ -359,32 +354,6 @@ const MapView = ({ plants, onResize }) => {
   const [mapHeight, setMapHeight] = useState(800);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showHeightSlider, setShowHeightSlider] = useState(false);
-
-  // Styles CSS personnalisés pour les marqueurs
-  useEffect(() => {
-    // Ajouter des styles personnalisés pour les marqueurs
-    const style = document.createElement('style');
-    style.textContent = `
-      .custom-div-icon {
-        background-color: transparent !important;
-        border: none;
-        width: auto !important;
-        height: auto !important;
-      }
-      .leaflet-marker-icon {
-        transition: all 0.2s ease-in-out;
-      }
-      .leaflet-marker-icon:hover {
-        transform: scale(1.1);
-        z-index: 1000 !important;
-      }
-    `;
-    document.head.appendChild(style);
-    
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
 
   // Utiliser les paramètres du contexte s'ils existent, sinon utiliser les valeurs par défaut
   const appSettings = settingsContext?.settings || defaultSettings;

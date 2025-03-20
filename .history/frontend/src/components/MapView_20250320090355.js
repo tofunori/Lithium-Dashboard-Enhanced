@@ -12,7 +12,6 @@ import { useSettings } from '../App';
 import useTranslation from '../hooks/useTranslation';
 import { Link } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
-import { useRefineries } from '../contexts/RefineryContext';
 
 // Correction pour les icônes Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -113,48 +112,45 @@ const MapLegend = () => {
       <Typography variant="caption" sx={{ fontSize: '0.8rem', display: 'block', mb: 1 }}>
         La taille des points varie selon la production annuelle de chaque raffinerie.
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', mb: 0.5 }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Box 
             sx={{ 
-              width: 10, 
-              height: 10, 
+              width: 8, 
+              height: 8, 
               borderRadius: '50%', 
               backgroundColor: 'grey',
-              border: '1px solid rgba(0, 0, 0, 0.2)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              mb: 0.5
+              mr: 0.5,
+              border: '1px solid rgba(0, 0, 0, 0.1)'
             }} 
           />
-          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Faible</Typography>
+          <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>Petite</Typography>
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Box 
             sx={{ 
-              width: 20, 
-              height: 20, 
+              width: 12, 
+              height: 12, 
               borderRadius: '50%', 
               backgroundColor: 'grey',
-              border: '1px solid rgba(0, 0, 0, 0.2)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              mb: 0.5
+              mr: 0.5,
+              border: '1px solid rgba(0, 0, 0, 0.1)'
             }} 
           />
-          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Moyenne</Typography>
+          <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>Moyenne</Typography>
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Box 
             sx={{ 
-              width: 30, 
-              height: 30, 
+              width: 16, 
+              height: 16, 
               borderRadius: '50%', 
               backgroundColor: 'grey',
-              border: '1px solid rgba(0, 0, 0, 0.2)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              mb: 0.5
+              mr: 0.5,
+              border: '1px solid rgba(0, 0, 0, 0.1)'
             }} 
           />
-          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Élevée</Typography>
+          <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>Grande</Typography>
         </Box>
       </Box>
     </Paper>

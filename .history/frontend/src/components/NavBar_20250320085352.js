@@ -26,8 +26,7 @@ import {
   Settings as SettingsIcon,
   Login as LoginIcon,
   Logout as LogoutIcon,
-  Person as PersonIcon,
-  Factory as FactoryIcon
+  Person as PersonIcon
 } from '@mui/icons-material';
 import { Link as RouterLink, useNavigate } from 'react-router-dom';
 import { useState } from 'react';
@@ -69,7 +68,6 @@ const NavBar = () => {
 
   const menuItems = [
     { text: t('dashboard'), icon: <DashboardIcon />, path: '/' },
-    { text: "Installations", icon: <FactoryIcon />, path: '/installations' },
     { text: t('plants'), icon: <ScienceIcon />, path: '/research' },
     { text: t('reports'), icon: <AssessmentIcon />, path: '/reports' },
     { text: t('stats'), icon: <GroupIcon />, path: '/collaborators' },

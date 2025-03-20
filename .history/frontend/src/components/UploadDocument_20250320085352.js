@@ -67,18 +67,27 @@ const documentFormats = [
 
 const UploadDocument = ({ onUploadSuccess }) => {
   const { t } = useTranslation();
-  const { user } = useAuth();
-  const [isSubmitting, setIsSubmitting] = useState(false);
-  const [successDialogOpen, setSuccessDialogOpen] = useState(false);
   const { addDocument } = useDocuments();
+  const { isAuthenticated } = useAuth();
   
-  // Déclaration de tous les hooks en haut du composant, hors de toute condition
-  // Configuration du worker PDF.js
+  // Si l'utilisateur n'est pas authentifié, ne pas afficher le formulaire
+  if (!isAuthenticated) {
+    return (
+      <Paper elevation={3} sx={{ p: 3, mb: 3 }}>
+        <Typography variant="h6" gutterBottom>
+          Accès restreint
+        </Typography>
+        <Typography variant="body1" color="text.secondary">
+          Vous devez être connecté pour pouvoir ajouter de nouveaux documents.
+        </Typography>
+      </Paper>
+    );
+  }
+  
+  // Configuration du worker PDF.js à l'intérieur du composant
   useEffect(() => {
     // Utiliser une URL CDN pour le worker
-    if (pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
-      pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.js`;
-    }
+    pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.js`;
   }, []);
   
   // État pour le formulaire
@@ -102,20 +111,6 @@ const UploadDocument = ({ onUploadSuccess }) => {
     message: '',
     severity: 'info'
   });
-  
-  // Vérification de l'utilisateur après déclaration des hooks
-  if (!user) {
-    return (
-      <Paper sx={{ p: 3, my: 2, textAlign: 'center' }}>
-        <Typography variant="h6" gutterBottom>
-          {t('sign_in_required')}
-        </Typography>
-        <Typography variant="body1" color="text.secondary">
-          Vous devez être connecté pour pouvoir ajouter de nouveaux documents.
-        </Typography>
-      </Paper>
-    );
-  }
   
   // Gérer les changements dans le formulaire
   const handleChange = (e) => {

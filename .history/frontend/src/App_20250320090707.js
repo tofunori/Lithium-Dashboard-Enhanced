@@ -6,7 +6,6 @@ import { Box, Paper, Typography, Grid, FormControl, InputLabel, Select, MenuItem
 import useTranslation from './hooks/useTranslation';
 import { AuthProvider, useAuth } from './contexts/AuthContext';
 import DocumentsProvider from './contexts/DocumentsContext';
-import RefineryProvider from './contexts/RefineryContext';
 
 // Composants
 import Dashboard from './components/Dashboard';
@@ -123,16 +122,14 @@ function App() {
         <CssBaseline />
         <AuthProvider>
           <DocumentsProvider>
-            <RefineryProvider>
-              <Router>
-                <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-                  <NavBar />
-                  <Box component="main" sx={{ flexGrow: 1, p: { xs: 1, sm: 2 } }}>
-                    <AppRoutes />
-                  </Box>
+            <Router>
+              <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
+                <NavBar />
+                <Box component="main" sx={{ flexGrow: 1, p: { xs: 1, sm: 2 } }}>
+                  <AppRoutes />
                 </Box>
-              </Router>
-            </RefineryProvider>
+              </Box>
+            </Router>
           </DocumentsProvider>
         </AuthProvider>
       </ThemeProvider>

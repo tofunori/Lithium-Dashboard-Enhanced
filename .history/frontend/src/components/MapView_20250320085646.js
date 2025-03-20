@@ -12,7 +12,6 @@ import { useSettings } from '../App';
 import useTranslation from '../hooks/useTranslation';
 import { Link } from '@mui/material';
 import { Link as RouterLink } from 'react-router-dom';
-import { useRefineries } from '../contexts/RefineryContext';
 
 // Correction pour les icônes Leaflet
 delete L.Icon.Default.prototype._getIconUrl;
@@ -22,31 +21,23 @@ L.Icon.Default.mergeOptions({
   shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
 });
 
-// Définir des icônes personnalisées selon le statut et la production
+// Définir des icônes personnalisées selon le statut
 const createCustomIcon = (color, size = 1) => {
-  // Utiliser une approche différente avec des divs personnalisés au lieu d'images
-  return L.divIcon({
-    className: 'custom-div-icon',
-    html: `
-      <div style="
-        background-color: ${color === 'green' ? '#00AA00' : 
-                            color === 'blue' ? '#1976D2' : 
-                            color === 'red' ? '#FF0000' : 
-                            color === 'orange' ? '#FFA500' : 
-                            color === 'violet' ? '#9C27B0' : '#999999'};
-        width: ${20 * size}px;
-        height: ${20 * size}px;
-        border-radius: 50%;
-        border: 2px solid white;
-        box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
-        display: flex;
-        justify-content: center;
-        align-items: center;
-      "></div>
-    `,
-    iconSize: [20 * size, 20 * size],
-    iconAnchor: [10 * size, 10 * size],
-    popupAnchor: [0, -10 * size]
+  // Taille de base
+  const baseWidth = 25;
+  const baseHeight = 41;
+  
+  // Calculer la nouvelle taille en fonction du facteur size
+  const width = Math.max(20, Math.min(40, baseWidth * size));
+  const height = Math.max(32, Math.min(65, baseHeight * size));
+  
+  return new L.Icon({
+    iconUrl: `https://raw.githubusercontent.com/pointhi/leaflet-color-markers/master/img/marker-icon-2x-${color}.png`,
+    shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/0.7.7/images/marker-shadow.png',
+    iconSize: [width, height],
+    iconAnchor: [width/2, height],
+    popupAnchor: [1, -height+7],
+    shadowSize: [width*1.5, height]
   });
 };
 
@@ -113,48 +104,32 @@ const MapLegend = () => {
       <Typography variant="caption" sx={{ fontSize: '0.8rem', display: 'block', mb: 1 }}>
         La taille des points varie selon la production annuelle de chaque raffinerie.
       </Typography>
-      <Box sx={{ display: 'flex', alignItems: 'flex-end', justifyContent: 'space-between', mb: 0.5 }}>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', mb: 0.5 }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Box 
             sx={{ 
-              width: 10, 
-              height: 10, 
+              width: 8, 
+              height: 8, 
               borderRadius: '50%', 
               backgroundColor: 'grey',
-              border: '1px solid rgba(0, 0, 0, 0.2)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              mb: 0.5
+              mr: 0.5,
+              border: '1px solid rgba(0, 0, 0, 0.1)'
             }} 
           />
-          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Faible</Typography>
+          <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>Petite</Typography>
         </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
           <Box 
             sx={{ 
-              width: 20, 
-              height: 20, 
+              width: 16, 
+              height: 16, 
               borderRadius: '50%', 
               backgroundColor: 'grey',
-              border: '1px solid rgba(0, 0, 0, 0.2)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              mb: 0.5
+              mr: 0.5,
+              border: '1px solid rgba(0, 0, 0, 0.1)'
             }} 
           />
-          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Moyenne</Typography>
-        </Box>
-        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-          <Box 
-            sx={{ 
-              width: 30, 
-              height: 30, 
-              borderRadius: '50%', 
-              backgroundColor: 'grey',
-              border: '1px solid rgba(0, 0, 0, 0.2)',
-              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
-              mb: 0.5
-            }} 
-          />
-          <Typography variant="caption" sx={{ fontSize: '0.7rem' }}>Élevée</Typography>
+          <Typography variant="caption" sx={{ fontSize: '0.75rem' }}>Grande</Typography>
         </Box>
       </Box>
     </Paper>
@@ -177,48 +152,11 @@ const MapMarkers = ({ plants, settings }) => {
   const extractProduction = (productionString) => {
     if (!productionString || productionString === 'N/A') return 0;
     
-    // Cas spécial pour "1 million de VE"
-    if (productionString.includes('million')) {
-      const matches = productionString.match(/(\d+)[\s]*million/i);
-      if (matches && matches[1]) {
-        return parseFloat(matches[1]) * 1000000;
-      }
-    }
-    
-    // Cas pour les valeurs en GWh
-    if (productionString.includes('GWh')) {
-      const matches = productionString.match(/(\d[\d\s.,]*)/);
-      if (matches && matches[1]) {
-        // Convertir GWh en une valeur proportionnelle pour comparaison
-        return parseFloat(matches[1].replace(/\s/g, '').replace(',', '.')) * 100000;
-      }
-    }
-    
-    // Valeurs numériques standards (pour tonnes, etc.)
     const matches = productionString.match(/(\d[\d\s.,]*)/);
     if (matches && matches[1]) {
-      // Gérer les plages comme "10 000-20 000"
-      if (matches[1].includes('-')) {
-        const range = matches[1].split('-');
-        if (range.length === 2) {
-          // Prendre la moyenne de la plage
-          const min = parseFloat(range[0].replace(/\s/g, '').replace(',', '.'));
-          const max = parseFloat(range[1].replace(/\s/g, '').replace(',', '.'));
-          return (min + max) / 2;
-        }
-      }
-      
-      // Cas normal - nombre simple
-      let value = matches[1].replace(/\s/g, '').replace(',', '.');
-      // Gérer les valeurs avec '+' à la fin comme "10 000+"
-      if (value.endsWith('+')) {
-        value = value.substring(0, value.length - 1);
-        // Ajouter 10% pour donner plus de poids aux valeurs avec '+'
-        return parseFloat(value) * 1.1;
-      }
-      return parseFloat(value);
+      // Convertir la string en nombre, en retirant les espaces et en remplaçant les virgules par des points
+      return parseFloat(matches[1].replace(/\s/g, '').replace(',', '.'));
     }
-    
     return 0;
   };
 
@@ -256,14 +194,10 @@ const MapMarkers = ({ plants, settings }) => {
         
         // Calculer la taille de l'icône en fonction de la production
         const production = extractProduction(plant.production);
-        
-        // Amplifier les différences en utilisant un facteur plus important (entre 0.5 et 3.0)
+        // Un facteur entre 0.8 et 1.5 selon la production
         const sizeFactor = maxProduction > 0 
-          ? 0.5 + Math.sqrt(production / maxProduction) * 2.5
+          ? 0.8 + (production / maxProduction) * 0.7
           : 1;
-        
-        // Debug: afficher la production et le facteur de taille dans la console
-        console.log(`Raffinerie: ${plant.name}, Production: ${plant.production}, Valeur extraite: ${production}, Facteur: ${sizeFactor}`);
           
         const icon = createCustomIcon(color, sizeFactor);
         
@@ -359,32 +293,6 @@ const MapView = ({ plants, onResize }) => {
   const [mapHeight, setMapHeight] = useState(800);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showHeightSlider, setShowHeightSlider] = useState(false);
-
-  // Styles CSS personnalisés pour les marqueurs
-  useEffect(() => {
-    // Ajouter des styles personnalisés pour les marqueurs
-    const style = document.createElement('style');
-    style.textContent = `
-      .custom-div-icon {
-        background-color: transparent !important;
-        border: none;
-        width: auto !important;
-        height: auto !important;
-      }
-      .leaflet-marker-icon {
-        transition: all 0.2s ease-in-out;
-      }
-      .leaflet-marker-icon:hover {
-        transform: scale(1.1);
-        z-index: 1000 !important;
-      }
-    `;
-    document.head.appendChild(style);
-    
-    return () => {
-      document.head.removeChild(style);
-    };
-  }, []);
 
   // Utiliser les paramètres du contexte s'ils existent, sinon utiliser les valeurs par défaut
   const appSettings = settingsContext?.settings || defaultSettings;
