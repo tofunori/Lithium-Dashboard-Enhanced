@@ -17,7 +17,7 @@ const statusColors = {
   'Planifié': '#FFA500',
   'En pause': '#FF0000',
   'Approuvé': '#9C27B0',
-  'En suspens': '#FF9800',
+  'En suspens': '#808080',  // Changé de #FF9800 (orange) à #808080 (gris)
   'default': '#999999'
 };
 

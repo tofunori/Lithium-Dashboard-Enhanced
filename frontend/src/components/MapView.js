@@ -68,7 +68,7 @@ const statusToColor = {
   'En pause': 'red',
   Planifié: 'orange',
   Approuvé: 'violet',
-  'En suspens': 'red',
+  'En suspens': 'grey',
   default: 'grey'
 };
 

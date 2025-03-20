@@ -58,7 +58,7 @@ const getStatusColor = (status, shade = 'main') => {
     'Planifié': { main: '#FFA500', light: '#fff8e1', dark: '#e65100' },
     'En pause': { main: '#FF0000', light: '#ffebee', dark: '#c62828' },
     'Approuvé': { main: '#9C27B0', light: '#f3e5f5', dark: '#7b1fa2' },
-    'En suspens': { main: '#FF9800', light: '#fff3e0', dark: '#e65100' }
+    'En suspens': { main: '#808080', light: '#f0f0f0', dark: '#505050' }
   };
   
   return colors[status] ? colors[status][shade] : '#999999';

@@ -248,7 +248,7 @@ export const refineryData = {
     "En construction": "#0000FF",
     "Planifié": "#FFA500",
     "Approuvé": "#FFA500",
-    "En suspens": "#FF0000",
+    "En suspens": "#808080",
     "En pause": "#FF0000"
   },
   "chart_colors": ["#4a6bff", "#ff7043", "#ffca28", "#66bb6a", "#ab47bc"]

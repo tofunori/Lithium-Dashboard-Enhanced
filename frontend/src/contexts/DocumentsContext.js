@@ -289,11 +289,10 @@ export const DocumentsProvider = ({ children }) => {
         format: documentFormat,
         description: document.description || "",
         date: document.date || new Date().toISOString(),
+        upload_date: document.upload_date || new Date().toISOString(),
         url: document.url || "",
-        supabasePath: document.supabasePath || null,
-        foundryId: document.foundryId || null,
-        createdAt: document.createdAt || new Date().toISOString(),
-        updatedAt: new Date().toISOString()
+        supabase_path: document.supabasePath || null,
+        foundry_id: document.foundryId || null
       };
       
       // Log pour débogage
@@ -352,7 +351,7 @@ export const DocumentsProvider = ({ children }) => {
             .from('documents')
             .update({
               url: publicUrl,
-              supabasePath: filePath,
+              supabase_path: filePath,
               format: fileExtension === 'pdf' ? 'pdf' : documentFormat
             })
             .eq('id', documentData.id)
@@ -380,24 +379,39 @@ export const DocumentsProvider = ({ children }) => {
       setReportsData(prevData => {
         const newData = { ...prevData };
         
-        if (documentData.foundryId) {
+        if (documentData.foundry_id) {
           // Ajouter aux rapports de la fonderie
-          if (!newData.foundry_reports[documentData.foundryId]) {
-            newData.foundry_reports[documentData.foundryId] = [];
+          if (!newData.foundry_reports[documentData.foundry_id]) {
+            newData.foundry_reports[documentData.foundry_id] = [];
           }
-          newData.foundry_reports[documentData.foundryId] = [
-            ...newData.foundry_reports[documentData.foundryId],
-            documentData
+          newData.foundry_reports[documentData.foundry_id] = [
+            ...newData.foundry_reports[documentData.foundry_id],
+            {
+              ...documentData,
+              foundryId: documentData.foundry_id,
+              supabasePath: documentData.supabase_path
+            }
           ];
         } else {
           // Ajouter aux rapports généraux
-          newData.general_reports = [...newData.general_reports, documentData];
+          newData.general_reports = [
+            ...newData.general_reports, 
+            {
+              ...documentData,
+              foundryId: documentData.foundry_id,
+              supabasePath: documentData.supabase_path
+            }
+          ];
         }
         
         return newData;
       });
       
-      return documentData;
+      return {
+        ...documentData,
+        foundryId: documentData.foundry_id,
+        supabasePath: documentData.supabase_path
+      };
     } catch (error) {
       console.error("Erreur lors de l'ajout du document:", error);
       throw error;
@@ -510,4 +524,4 @@ export const DocumentsProvider = ({ children }) => {
   );
 };
 
-export default DocumentsProvider; 
+export default DocumentsProvider;

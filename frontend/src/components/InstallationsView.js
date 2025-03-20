@@ -123,7 +123,9 @@ const InstallationsView = () => {
       setEditMode(false);
       setCurrentRefinery(null);
       setFormData({
-        id: refineries.length > 0 ? Math.max(...refineries.map(r => r.id)) + 1 : 1,
+        id: Array.isArray(refineries) && refineries.length > 0 
+          ? Math.max(...refineries.map(r => r.id || 0)) + 1 
+          : 1,
         name: '',
         location: '',
         country: '',
@@ -289,14 +291,14 @@ const InstallationsView = () => {
                 </TableRow>
               </TableHead>
               <TableBody>
-                {refineries.length === 0 ? (
+                {(Array.isArray(refineries) ? refineries : []).length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={6} align="center">
                       Aucune raffinerie trouvée
                     </TableCell>
                   </TableRow>
                 ) : (
-                  refineries
+                  (Array.isArray(refineries) ? refineries : [])
                     .slice(page * rowsPerPage, page * rowsPerPage + rowsPerPage)
                     .map((refinery) => (
                     <TableRow key={refinery.id} hover>
@@ -372,7 +374,7 @@ const InstallationsView = () => {
           <TablePagination
             rowsPerPageOptions={[5, 10, 25, 50]}
             component="div"
-            count={refineries.length}
+            count={(Array.isArray(refineries) ? refineries : []).length}
             rowsPerPage={rowsPerPage}
             page={page}
             onPageChange={handleChangePage}

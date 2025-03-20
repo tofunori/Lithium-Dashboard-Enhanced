@@ -10,14 +10,22 @@ import {
   Dialog,
   DialogContent,
   DialogTitle,
-  IconButton
+  IconButton,
+  Menu,
+  MenuItem,
+  Tooltip
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
+import FileUploadIcon from '@mui/icons-material/FileUpload';
+import LinkIcon from '@mui/icons-material/Link';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { useNavigate } from 'react-router-dom';
 import useTranslation from '../hooks/useTranslation';
 import ReportsView from './ReportsView';
 import UploadDocument from './UploadDocument';
+import WebToPdfDialog from './dialogs/WebToPdfDialog';
 import { reportsData } from '../data/reportsData';
 import { useAuth } from '../contexts/AuthContext';
 import { useDocuments } from '../contexts/DocumentsContext';
@@ -28,7 +36,22 @@ const Reports = () => {
   const { isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const [openUploadDialog, setOpenUploadDialog] = useState(false);
+  const [openWebToPdfDialog, setOpenWebToPdfDialog] = useState(false);
   const { loadPublicDocuments, isLoading } = useDocuments();
+  
+  // État pour le menu déroulant
+  const [anchorEl, setAnchorEl] = useState(null);
+  const openMenu = Boolean(anchorEl);
+  
+  // Ouvrir le menu
+  const handleOpenMenu = (event) => {
+    setAnchorEl(event.currentTarget);
+  };
+  
+  // Fermer le menu
+  const handleCloseMenu = () => {
+    setAnchorEl(null);
+  };
   
   // Charger explicitement les documents au montage du composant
   useEffect(() => {
@@ -56,20 +79,48 @@ const Reports = () => {
     return count;
   };
   
-  // Gérer l'ouverture et la fermeture du dialog d'upload
-  const handleOpenUploadDialog = () => {
-    // Vérifier si l'utilisateur est connecté
+  // Vérifier l'authentification avant d'ouvrir un dialogue
+  const checkAuthenticationBeforeAction = (action) => {
     if (!isAuthenticated) {
       // Rediriger vers la page de connexion
       navigate('/login', { state: { from: { pathname: '/reports' } } });
-      return;
+      return false;
     }
-    
-    setOpenUploadDialog(true);
+    return true;
   };
   
+  // Gérer l'ouverture du dialogue d'upload de fichier
+  const handleOpenUploadDialog = () => {
+    if (checkAuthenticationBeforeAction()) {
+      setOpenUploadDialog(true);
+    }
+    handleCloseMenu();
+  };
+  
+  // Gérer l'ouverture du dialogue de conversion web vers PDF
+  const handleOpenWebToPdfDialog = () => {
+    if (checkAuthenticationBeforeAction()) {
+      setOpenWebToPdfDialog(true);
+    }
+    handleCloseMenu();
+  };
+  
+  // Gérer la fermeture des dialogues
   const handleCloseUploadDialog = () => {
     setOpenUploadDialog(false);
+  };
+  
+  const handleCloseWebToPdfDialog = () => {
+    setOpenWebToPdfDialog(false);
+  };
+  
+  // Gérer le succès de l'upload ou de la conversion
+  const handleDocumentSuccess = () => {
+    // Fermer les dialogues après un succès
+    setTimeout(() => {
+      handleCloseUploadDialog();
+      handleCloseWebToPdfDialog();
+    }, 1500); // Attendre un peu pour que l'utilisateur voie la notification de succès
   };
   
   return (
@@ -84,14 +135,44 @@ const Reports = () => {
           </Typography>
         </Box>
         
-        <Button 
-          variant="contained" 
-          startIcon={<AddIcon />}
-          onClick={handleOpenUploadDialog}
-          sx={{ mt: 1 }}
-        >
-          {isAuthenticated ? t('add_document') : t('login_to_add_document')}
-        </Button>
+        {/* Menu déroulant pour ajouter des documents */}
+        <Box>
+          <Button 
+            variant="contained" 
+            startIcon={<AddIcon />}
+            onClick={handleOpenMenu}
+            aria-haspopup="true"
+            aria-expanded={openMenu ? 'true' : undefined}
+            aria-controls={openMenu ? 'add-document-menu' : undefined}
+            sx={{ mt: 1 }}
+          >
+            {isAuthenticated ? t('add_document') : t('login_to_add_document')}
+          </Button>
+          
+          <Menu
+            id="add-document-menu"
+            anchorEl={anchorEl}
+            open={openMenu}
+            onClose={handleCloseMenu}
+            anchorOrigin={{
+              vertical: 'bottom',
+              horizontal: 'right',
+            }}
+            transformOrigin={{
+              vertical: 'top',
+              horizontal: 'right',
+            }}
+          >
+            <MenuItem onClick={handleOpenUploadDialog}>
+              <FileUploadIcon sx={{ mr: 1 }} />
+              Téléverser un fichier
+            </MenuItem>
+            <MenuItem onClick={handleOpenWebToPdfDialog}>
+              <PictureAsPdfIcon sx={{ mr: 1 }} />
+              Convertir une page web en PDF
+            </MenuItem>
+          </Menu>
+        </Box>
       </Box>
       
       <Divider sx={{ mb: 4 }} />
@@ -120,23 +201,28 @@ const Reports = () => {
       >
         <DialogTitle>
           <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <Typography variant="h6">Ajouter un document</Typography>
+            <Typography variant="h6">
+              <FileUploadIcon sx={{ verticalAlign: 'middle', mr: 1 }} />
+              Ajouter un document
+            </Typography>
             <IconButton onClick={handleCloseUploadDialog} size="small">
               <CloseIcon />
             </IconButton>
           </Box>
         </DialogTitle>
         <DialogContent dividers>
-          <UploadDocument onUploadSuccess={() => {
-            // Fermer le dialog après un téléchargement réussi
-            setTimeout(() => {
-              handleCloseUploadDialog();
-            }, 1500); // Attendre un peu pour que l'utilisateur voie la notification de succès
-          }} />
+          <UploadDocument onUploadSuccess={handleDocumentSuccess} />
         </DialogContent>
       </Dialog>
+      
+      {/* Dialog pour la conversion web vers PDF */}
+      <WebToPdfDialog
+        open={openWebToPdfDialog}
+        onClose={handleCloseWebToPdfDialog}
+        onSuccess={handleDocumentSuccess}
+      />
     </Container>
   );
 };
 
-export default Reports; 
+export default Reports;

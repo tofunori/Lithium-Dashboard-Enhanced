@@ -22,7 +22,7 @@ class RecyclingPlantViewSet(viewsets.ModelViewSet):
     """API pour gérer les installations de recyclage"""
     queryset = RecyclingPlant.objects.all()
     serializer_class = RecyclingPlantSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]  # Permettre l'accès à tous
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['university', 'active']
     search_fields = ['name', 'address']
@@ -113,7 +113,7 @@ class UniversityViewSet(viewsets.ModelViewSet):
     """API pour gérer les universités"""
     queryset = University.objects.all()
     serializer_class = UniversitySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['country']
     search_fields = ['name', 'short_name']
@@ -124,7 +124,7 @@ class ProductionDataViewSet(viewsets.ModelViewSet):
     """API pour gérer les données de production"""
     queryset = ProductionData.objects.all()
     serializer_class = ProductionDataSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend, filters.OrderingFilter]
     filterset_fields = ['plant', 'date']
     ordering_fields = ['date', 'production_amount', 'recycling_rate']
@@ -134,7 +134,7 @@ class ResearchProjectViewSet(viewsets.ModelViewSet):
     """API pour gérer les projets de recherche"""
     queryset = ResearchProject.objects.all()
     serializer_class = ResearchProjectSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend, filters.SearchFilter, filters.OrderingFilter]
     filterset_fields = ['status', 'universities', 'plants']
     search_fields = ['title', 'description']
@@ -144,7 +144,7 @@ class ResearchProjectViewSet(viewsets.ModelViewSet):
 class ProductionHistoryView(generics.ListAPIView):
     """API pour obtenir l'historique de production par mois"""
     serializer_class = ProductionHistorySerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['plant']
     
