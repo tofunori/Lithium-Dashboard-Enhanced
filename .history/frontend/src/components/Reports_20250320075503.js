@@ -32,18 +32,9 @@ const Reports = () => {
   
   // Charger explicitement les documents au montage du composant
   useEffect(() => {
-    const documentsCached = localStorage.getItem('cached_documents');
-    
-    if (!documentsCached) {
-      console.log("Premier chargement des documents publics dans Reports");
-      loadPublicDocuments(false);
-    } else {
-      console.log("Documents déjà en cache, pas de rechargement dans Reports");
-    }
-    
-    // Cette fonction ne doit s'exécuter qu'une seule fois au montage
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    console.log("Chargement explicite des documents publics dans Reports");
+    loadPublicDocuments();
+  }, [loadPublicDocuments]);
   
   // Compter le nombre total de rapports (généraux + spécifiques)
   const getTotalReportsCount = () => {
@@ -106,7 +97,11 @@ const Reports = () => {
               boxShadow: '0 4px 20px rgba(0, 0, 0, 0.05)'
             }}
           >
-            <ReportsView />
+            {isLoading ? (
+              <Typography variant="body1">Chargement des documents...</Typography>
+            ) : (
+              <ReportsView />
+            )}
           </Paper>
         </Grid>
       </Grid>

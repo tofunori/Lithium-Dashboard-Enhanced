@@ -21,48 +21,11 @@ const options = {
   global: {
     headers: { 'x-application-name': 'lithium-dashboard' },
   },
-  // Configuration pour les problèmes réseau
+  // Ajouter des retry en cas d'erreur réseau
   realtime: {
     params: {
       eventsPerSecond: 10
     }
-  },
-  db: {
-    schema: 'public'
-  },
-  // Configuration des retries pour les requêtes HTTP
-  fetch: (url, options) => {
-    const fetchOptions = {
-      ...options,
-      // Délai d'attente de 15 secondes pour chaque requête
-      timeout: 15000,
-    };
-    
-    // Fonction pour retenter une requête
-    const fetchWithRetry = async (attempt = 1, maxAttempts = 3) => {
-      try {
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), fetchOptions.timeout);
-        
-        const response = await fetch(url, {
-          ...fetchOptions,
-          signal: controller.signal
-        });
-        
-        clearTimeout(timeoutId);
-        return response;
-      } catch (error) {
-        if (attempt < maxAttempts) {
-          console.log(`Tentative ${attempt} échouée, nouvelle tentative dans ${attempt * 1000}ms...`);
-          // Attendre de plus en plus longtemps entre les tentatives
-          await new Promise(resolve => setTimeout(resolve, attempt * 1000));
-          return fetchWithRetry(attempt + 1, maxAttempts);
-        }
-        throw error;
-      }
-    };
-    
-    return fetchWithRetry();
   }
 };
 
@@ -106,25 +69,16 @@ export const createSafeFileName = (originalName) => {
   return `document_${timestamp}_${safeFileName}`;
 };
 
-// Fonction pour détecter si nous sommes en ligne
-export const isOnline = () => {
-  return typeof navigator !== 'undefined' && navigator.onLine;
-};
-
 // Fonction sécurisée pour la déconnexion
 export const safeSignOut = async () => {
   try {
     // Supprimer manuellement la session du localStorage pour s'assurer qu'elle disparaît
     localStorage.removeItem('supabase.auth.token');
     
-    // Essayer de se déconnecter via l'API seulement si nous sommes en ligne
-    if (isOnline()) {
-      const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.warn('Erreur lors de la déconnexion via API, mais session locale supprimée:', error);
-      }
-    } else {
-      console.warn('Déconnexion hors ligne : session supprimée localement uniquement');
+    // Essayer de se déconnecter via l'API
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.warn('Erreur lors de la déconnexion via API, mais session locale supprimée:', error);
     }
     return true;
   } catch (err) {

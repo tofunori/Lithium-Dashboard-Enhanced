@@ -216,7 +216,7 @@ const ReportCard = ({ report, onDelete }) => {
 // Composant principal
 const ReportsView = ({ foundryId }) => {
   const { t } = useTranslation();
-  const { reportsData, removeDocument, clearAllReports, isLoading, loadPublicDocuments, loadError } = useDocuments();
+  const { reportsData, removeDocument, clearAllReports, isLoading, loadPublicDocuments } = useDocuments();
   const { isAuthenticated } = useAuth();
   const [tabValue, setTabValue] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
@@ -277,51 +277,29 @@ const ReportsView = ({ foundryId }) => {
     { value: 'custom', label: 'Période personnalisée' }
   ];
 
-  // Modifier l'effet pour éviter les rechargements excessifs
-  // Modifier l'effet qui recharge les documents pour limiter les tentatives
-  useEffect(() => {
-    // Ne recharger que si :
-    // - Nous avons explicitement une liste de rapports vide (pas juste indéfinie)
-    // - Nous ne sommes pas en train de charger
-    // - Aucune erreur n'est en cours
-    if (reports.length === 0 && !isLoading && !loadError) {
-      console.log("Pas de documents trouvés, chargement initial unique");
-      // Marquer un effet de bord dans une variable locale pour éviter les rechargements
-      const timeout = setTimeout(() => {
-        loadPublicDocuments(false);
-      }, 100);
-      return () => clearTimeout(timeout);
-    }
-  }, [loadPublicDocuments]);
-
-  // Mettre à jour reports uniquement lorsque reportsData change réellement
+  // Obtenir les rapports
   useEffect(() => {
     console.log("ID de la fonderie:", foundryId);
-    
-    // Attendre que les données soient chargées
-    if (isLoading) {
-      return;
-    }
-    
-    let newReports = [];
+    console.log("Structure de reportsData:", reportsData);
+    let reports = [];
     
     // Ajouter les rapports spécifiques à la fonderie si un ID est fourni
     if (foundryId && reportsData.foundry_reports[foundryId]) {
       console.log("Rapports spécifiques trouvés:", reportsData.foundry_reports[foundryId]);
-      newReports = [...reportsData.foundry_reports[foundryId]];
+      reports = [...reportsData.foundry_reports[foundryId]];
     } else if (!foundryId) {
       // Si aucun ID n'est fourni (page principale des rapports)
       // Sur l'onglet 0, afficher tous les rapports (généraux + tous les rapports spécifiques)
       if (tabValue === 0) {
-        newReports = [...reportsData.general_reports];
+        reports = [...reportsData.general_reports];
         // Ajouter tous les rapports spécifiques
         Object.values(reportsData.foundry_reports).forEach(foundryReports => {
-          newReports = [...newReports, ...foundryReports];
+          reports = [...reports, ...foundryReports];
         });
       } 
       // Sur l'onglet 1, afficher uniquement les rapports généraux
       else if (tabValue === 1) {
-        newReports = [...reportsData.general_reports];
+        reports = [...reportsData.general_reports];
       }
     } else {
       console.log("Aucun rapport spécifique trouvé pour l'ID:", foundryId);
@@ -330,19 +308,20 @@ const ReportsView = ({ foundryId }) => {
     // Si on affiche les rapports d'une fonderie spécifique et qu'on est sur l'onglet "Tous"
     if (foundryId && tabValue === 0) {
       console.log("Ajout des rapports généraux:", reportsData.general_reports);
-      newReports = [...newReports, ...reportsData.general_reports];
+      reports = [...reports, ...reportsData.general_reports];
     }
     
-    console.log("Rapports finaux à afficher:", newReports.length);
-    // Utiliser un JSON.stringify pour comparer si les données ont réellement changé
-    // avant de mettre à jour l'état pour éviter les rendus inutiles
-    const currentReportsJson = JSON.stringify(reports.map(r => r.id));
-    const newReportsJson = JSON.stringify(newReports.map(r => r.id));
-    
-    if (currentReportsJson !== newReportsJson) {
-      setReports(newReports);
+    console.log("Rapports finaux à afficher:", reports);
+    setReports(reports);
+  }, [foundryId, tabValue, reportsData]);
+
+  // Si les données sont en cours de chargement, afficher l'indicateur
+  useEffect(() => {
+    if (reports.length === 0 && !isLoading) {
+      console.log("Pas de documents trouvés, rechargement...");
+      loadPublicDocuments();
     }
-  }, [foundryId, tabValue, reportsData, isLoading]);
+  }, [reports.length, isLoading, loadPublicDocuments]);
 
   // Afficher un message de débogage des documents
   useEffect(() => {
@@ -557,290 +536,252 @@ const ReportsView = ({ foundryId }) => {
         </Alert>
       </Snackbar>
       
-      {/* Affichage persistant des onglets et filtres, même pendant le chargement */}
-      <>
-        {/* Onglets principaux - adaptés selon la présence d'un ID de fonderie */}
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-          <Tabs 
-            value={tabValue} 
-            onChange={handleTabChange}
-            textColor="primary"
-            indicatorColor="primary"
-          >
-            {foundryId ? (
-              // Onglets pour une fonderie spécifique
-              <>
-                <Tab label="Tous les documents" />
-                <Tab label="Spécifiques à cette installation" />
-              </>
-            ) : (
-              // Onglets pour la page principale des rapports
-              <>
-                <Tab label="Tous les documents" />
-                <Tab label="Documents généraux" />
-              </>
-            )}
-          </Tabs>
-        </Box>
-        
-        {/* Barre de recherche et filtres principaux */}
-        <Box sx={{ mb: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-          <TextField
-            placeholder="Rechercher un document..."
-            size="small"
-            fullWidth
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ flexGrow: 1 }}
-          />
-          
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <InputLabel>Trier par</InputLabel>
-            <Select
-              value={sortOrder}
-              label="Trier par"
-              onChange={(e) => setSortOrder(e.target.value)}
+      {isLoading ? (
+        <LoadingIndicator message="Chargement des documents..." />
+      ) : (
+        <>
+          {/* Onglets principaux - adaptés selon la présence d'un ID de fonderie */}
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+            <Tabs 
+              value={tabValue} 
+              onChange={handleTabChange}
+              textColor="primary"
+              indicatorColor="primary"
             >
-              {sortOptions.map(option => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <Button 
-            size="small" 
-            variant="outlined" 
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            endIcon={showAdvancedFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          >
-            Filtres avancés
-          </Button>
-        </Box>
-      </>
-      
-      {/* Filtres avancés (visibles uniquement si showAdvancedFilters est vrai) */}
-      <Collapse in={showAdvancedFilters}>
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: 2, 
-            mb: 3, 
-            borderRadius: '8px', 
-            backgroundColor: 'rgba(0, 0, 0, 0.02)'
-          }}
-        >
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Type de document</InputLabel>
-                <Select
-                  value={filterType}
-                  label="Type de document"
-                  onChange={(e) => setFilterType(e.target.value)}
-                >
-                  {filterTypes.map(type => (
-                    <MenuItem key={type.value} value={type.value}>
-                      {type.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Format</InputLabel>
-                <Select
-                  value={filterFormat}
-                  label="Format"
-                  onChange={(e) => setFilterFormat(e.target.value)}
-                >
-                  {formatFilters.map(format => (
-                    <MenuItem key={format.value} value={format.value}>
-                      {format.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Période</InputLabel>
-                <Select
-                  value={dateFilter}
-                  label="Période"
-                  onChange={handleDateFilterChange}
-                >
-                  {dateFilterOptions.map(option => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            {dateFilter === 'custom' && (
-              <Grid item xs={12} sm={6} md={3}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <TextField
-                    size="small"
-                    label="Du"
-                    type="date"
-                    name="start"
-                    value={customDateRange.start}
-                    onChange={handleCustomDateChange}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <TextField
-                    size="small"
-                    label="Au"
-                    type="date"
-                    name="end"
-                    value={customDateRange.end}
-                    onChange={handleCustomDateChange}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Box>
-              </Grid>
-            )}
-            
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                <Button 
-                  size="small" 
-                  variant="outlined"
-                  onClick={() => {
-                    setFilterType('all');
-                    setFilterFormat('all');
-                    setDateFilter('all');
-                    setCustomDateRange({ start: '', end: '' });
-                    setSortOrder('newest');
-                    setSearchQuery('');
-                  }}
-                >
-                  Réinitialiser les filtres
-                </Button>
-              </Box>
-            </Grid>
-          </Grid>
-        </Paper>
-      </Collapse>
-      
-      {/* Contrôles d'affichage avec indication seulement si données disponibles */}
-      {(!isLoading || filteredReports.length > 0) && (
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
-              {filteredReports.length} document{filteredReports.length > 1 ? 's' : ''} trouvé{filteredReports.length > 1 ? 's' : ''}
-            </Typography>
-            
-            {isAuthenticated && (
-              <Button 
-                variant="outlined" 
-                color="error" 
-                size="small"
-                onClick={() => {
-                  if (window.confirm('Êtes-vous sûr de vouloir supprimer tous les documents par défaut? Cette action est irréversible.')) {
-                    clearAllReports();
-                  }
-                }}
-                sx={{ mr: 2 }}
-              >
-                Supprimer tous les documents par défaut
-              </Button>
-            )}
+              {foundryId ? (
+                // Onglets pour une fonderie spécifique
+                <>
+                  <Tab label="Tous les documents" />
+                  <Tab label="Spécifiques à cette installation" />
+                </>
+              ) : (
+                // Onglets pour la page principale des rapports
+                <>
+                  <Tab label="Tous les documents" />
+                  <Tab label="Documents généraux" />
+                </>
+              )}
+            </Tabs>
           </Box>
           
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {/* Contrôles d'affichage */}
-            <Box sx={{ display: 'flex', alignItems: 'center', width: 180 }}>
-              <ZoomOutIcon sx={{ color: 'text.secondary', mr: 1 }} />
-              <Slider
-                size="small"
-                value={cardSize}
-                min={1}
-                max={4}
-                step={1}
-                onChange={handleCardSizeChange}
-                aria-label="Taille d'affichage"
-              />
-              <ZoomInIcon sx={{ color: 'text.secondary', ml: 1 }} />
+          {/* Barre de recherche et filtres principaux */}
+          <Box sx={{ mb: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+            <TextField
+              placeholder="Rechercher un document..."
+              size="small"
+              fullWidth
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ flexGrow: 1 }}
+            />
+            
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>Trier par</InputLabel>
+              <Select
+                value={sortOrder}
+                label="Trier par"
+                onChange={(e) => setSortOrder(e.target.value)}
+              >
+                {sortOptions.map(option => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <Button 
+              size="small" 
+              variant="outlined" 
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              endIcon={showAdvancedFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            >
+              Filtres avancés
+            </Button>
+          </Box>
+          
+          {/* Filtres avancés (visibles uniquement si showAdvancedFilters est vrai) */}
+          <Collapse in={showAdvancedFilters}>
+            <Paper 
+              elevation={0} 
+              sx={{ 
+                p: 2, 
+                mb: 3, 
+                borderRadius: '8px', 
+                backgroundColor: 'rgba(0, 0, 0, 0.02)'
+              }}
+            >
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Type de document</InputLabel>
+                    <Select
+                      value={filterType}
+                      label="Type de document"
+                      onChange={(e) => setFilterType(e.target.value)}
+                    >
+                      {filterTypes.map(type => (
+                        <MenuItem key={type.value} value={type.value}>
+                          {type.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Format</InputLabel>
+                    <Select
+                      value={filterFormat}
+                      label="Format"
+                      onChange={(e) => setFilterFormat(e.target.value)}
+                    >
+                      {formatFilters.map(format => (
+                        <MenuItem key={format.value} value={format.value}>
+                          {format.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Période</InputLabel>
+                    <Select
+                      value={dateFilter}
+                      label="Période"
+                      onChange={handleDateFilterChange}
+                    >
+                      {dateFilterOptions.map(option => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                {dateFilter === 'custom' && (
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <TextField
+                        size="small"
+                        label="Du"
+                        type="date"
+                        name="start"
+                        value={customDateRange.start}
+                        onChange={handleCustomDateChange}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                      <TextField
+                        size="small"
+                        label="Au"
+                        type="date"
+                        name="end"
+                        value={customDateRange.end}
+                        onChange={handleCustomDateChange}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Box>
+                  </Grid>
+                )}
+                
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                    <Button 
+                      size="small" 
+                      variant="outlined"
+                      onClick={() => {
+                        setFilterType('all');
+                        setFilterFormat('all');
+                        setDateFilter('all');
+                        setCustomDateRange({ start: '', end: '' });
+                        setSortOrder('newest');
+                        setSearchQuery('');
+                      }}
+                    >
+                      Réinitialiser les filtres
+                    </Button>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Paper>
+          </Collapse>
+          
+          {/* Indication sur le nombre de résultats et contrôles d'affichage */}
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
+                {filteredReports.length} document{filteredReports.length > 1 ? 's' : ''} trouvé{filteredReports.length > 1 ? 's' : ''}
+              </Typography>
+              
+              {isAuthenticated && (
+                <Button 
+                  variant="outlined" 
+                  color="error" 
+                  size="small"
+                  onClick={() => {
+                    if (window.confirm('Êtes-vous sûr de vouloir supprimer tous les documents par défaut? Cette action est irréversible.')) {
+                      clearAllReports();
+                    }
+                  }}
+                  sx={{ mr: 2 }}
+                >
+                  Supprimer tous les documents par défaut
+                </Button>
+              )}
             </Box>
             
-            <ToggleButtonGroup
-              value={viewMode}
-              exclusive
-              onChange={handleViewModeChange}
-              aria-label="Mode d'affichage"
-              size="small"
-            >
-              <ToggleButton value="list" aria-label="Liste simple">
-                <ViewListIcon />
-              </ToggleButton>
-              <ToggleButton value="detail" aria-label="Liste détaillée">
-                <ViewHeadlineIcon />
-              </ToggleButton>
-              <ToggleButton value="grid" aria-label="Grille">
-                <ViewModuleIcon />
-              </ToggleButton>
-              <ToggleButton value="compact" aria-label="Tableau compact">
-                <ViewCompactIcon />
-              </ToggleButton>
-            </ToggleButtonGroup>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {/* Contrôle de la taille d'affichage */}
+              <Box sx={{ display: 'flex', alignItems: 'center', width: 180 }}>
+                <ZoomOutIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                <Slider
+                  size="small"
+                  value={cardSize}
+                  min={1}
+                  max={4}
+                  step={1}
+                  onChange={handleCardSizeChange}
+                  aria-label="Taille d'affichage"
+                />
+                <ZoomInIcon sx={{ color: 'text.secondary', ml: 1 }} />
+              </Box>
+              
+              {/* Sélecteur de mode d'affichage */}
+              <ToggleButtonGroup
+                value={viewMode}
+                exclusive
+                onChange={handleViewModeChange}
+                aria-label="Mode d'affichage"
+                size="small"
+              >
+                <ToggleButton value="list" aria-label="Liste simple">
+                  <ViewListIcon />
+                </ToggleButton>
+                <ToggleButton value="detail" aria-label="Liste détaillée">
+                  <ViewHeadlineIcon />
+                </ToggleButton>
+                <ToggleButton value="grid" aria-label="Grille">
+                  <ViewModuleIcon />
+                </ToggleButton>
+                <ToggleButton value="compact" aria-label="Tableau compact">
+                  <ViewCompactIcon />
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
           </Box>
-        </Box>
-      )}
-      
-      {/* Indicateur de chargement */}
-      {isLoading && !loadError && (
-        <Box sx={{ 
-          p: 4, 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          minHeight: '200px'
-        }}>
-          <LoadingIndicator message="Chargement des documents..." />
-        </Box>
-      )}
-      
-      {/* Affichage des erreurs */}
-      {loadError && (
-        <Box sx={{ 
-          p: 3, 
-          textAlign: 'center', 
-          border: '1px solid rgba(255,0,0,0.1)',
-          borderRadius: '8px',
-          backgroundColor: 'rgba(255,0,0,0.05)',
-          mb: 3
-        }}>
-          <Alert severity="error" sx={{ mb: 2 }}>
-            Erreur de chargement des documents: {loadError}
-          </Alert>
-          <Button 
-            variant="contained" 
-            onClick={() => loadPublicDocuments(true)}
-            sx={{ mt: 2 }}
-          >
-            Réessayer
-          </Button>
-        </Box>
-      )}
-      
-      {/* Affichage du contenu seulement si données disponibles et pas d'erreur */}
-      {!isLoading && !loadError && (
-        <>
+          
+          {/* Affichage des documents selon le mode sélectionné */}
           {filteredReports.length === 0 ? (
             <Paper sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="h6" color="text.secondary">

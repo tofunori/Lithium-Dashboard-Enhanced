@@ -1,5 +1,5 @@
 import React, { createContext, useState, useContext, useEffect } from 'react';
-import { supabase, safeSignOut } from '../supabase';
+import { supabase } from '../supabase';
 
 // Création du contexte d'authentification
 const AuthContext = createContext();
@@ -137,8 +137,13 @@ export const AuthProvider = ({ children }) => {
       setIsAuthenticated(false);
       setAuthError(null);
       
-      // Utiliser la fonction sécurisée pour se déconnecter
-      await safeSignOut();
+      // Ensuite, appeler signOut de Supabase
+      const { error } = await supabase.auth.signOut();
+      
+      if (error) {
+        console.error('Erreur lors de la déconnexion (non bloquante):', error);
+        // Ne pas propager cette erreur pour éviter de bloquer l'interface
+      }
       
       // Rediriger ou effectuer d'autres actions post-déconnexion ici si nécessaire
       return true;

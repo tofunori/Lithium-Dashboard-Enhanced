@@ -61,7 +61,6 @@ import ZoomOutIcon from '@mui/icons-material/ZoomOut';
 import { useDocuments } from '../contexts/DocumentsContext';
 import { useAuth } from '../contexts/AuthContext';
 import useTranslation from '../hooks/useTranslation';
-import LoadingIndicator from './LoadingIndicator';
 
 // Récupérer l'icône appropriée selon le format
 const getFormatIcon = (format) => {
@@ -216,7 +215,7 @@ const ReportCard = ({ report, onDelete }) => {
 // Composant principal
 const ReportsView = ({ foundryId }) => {
   const { t } = useTranslation();
-  const { reportsData, removeDocument, clearAllReports, isLoading, loadPublicDocuments, loadError } = useDocuments();
+  const { reportsData, removeDocument, clearAllReports, isLoading } = useDocuments();
   const { isAuthenticated } = useAuth();
   const [tabValue, setTabValue] = useState(0);
   const [searchQuery, setSearchQuery] = useState('');
@@ -277,51 +276,29 @@ const ReportsView = ({ foundryId }) => {
     { value: 'custom', label: 'Période personnalisée' }
   ];
 
-  // Modifier l'effet pour éviter les rechargements excessifs
-  // Modifier l'effet qui recharge les documents pour limiter les tentatives
-  useEffect(() => {
-    // Ne recharger que si :
-    // - Nous avons explicitement une liste de rapports vide (pas juste indéfinie)
-    // - Nous ne sommes pas en train de charger
-    // - Aucune erreur n'est en cours
-    if (reports.length === 0 && !isLoading && !loadError) {
-      console.log("Pas de documents trouvés, chargement initial unique");
-      // Marquer un effet de bord dans une variable locale pour éviter les rechargements
-      const timeout = setTimeout(() => {
-        loadPublicDocuments(false);
-      }, 100);
-      return () => clearTimeout(timeout);
-    }
-  }, [loadPublicDocuments]);
-
-  // Mettre à jour reports uniquement lorsque reportsData change réellement
+  // Obtenir les rapports
   useEffect(() => {
     console.log("ID de la fonderie:", foundryId);
-    
-    // Attendre que les données soient chargées
-    if (isLoading) {
-      return;
-    }
-    
-    let newReports = [];
+    console.log("Structure de reportsData:", reportsData);
+    let reports = [];
     
     // Ajouter les rapports spécifiques à la fonderie si un ID est fourni
     if (foundryId && reportsData.foundry_reports[foundryId]) {
       console.log("Rapports spécifiques trouvés:", reportsData.foundry_reports[foundryId]);
-      newReports = [...reportsData.foundry_reports[foundryId]];
+      reports = [...reportsData.foundry_reports[foundryId]];
     } else if (!foundryId) {
       // Si aucun ID n'est fourni (page principale des rapports)
       // Sur l'onglet 0, afficher tous les rapports (généraux + tous les rapports spécifiques)
       if (tabValue === 0) {
-        newReports = [...reportsData.general_reports];
+        reports = [...reportsData.general_reports];
         // Ajouter tous les rapports spécifiques
         Object.values(reportsData.foundry_reports).forEach(foundryReports => {
-          newReports = [...newReports, ...foundryReports];
+          reports = [...reports, ...foundryReports];
         });
       } 
       // Sur l'onglet 1, afficher uniquement les rapports généraux
       else if (tabValue === 1) {
-        newReports = [...reportsData.general_reports];
+        reports = [...reportsData.general_reports];
       }
     } else {
       console.log("Aucun rapport spécifique trouvé pour l'ID:", foundryId);
@@ -330,27 +307,12 @@ const ReportsView = ({ foundryId }) => {
     // Si on affiche les rapports d'une fonderie spécifique et qu'on est sur l'onglet "Tous"
     if (foundryId && tabValue === 0) {
       console.log("Ajout des rapports généraux:", reportsData.general_reports);
-      newReports = [...newReports, ...reportsData.general_reports];
+      reports = [...reports, ...reportsData.general_reports];
     }
     
-    console.log("Rapports finaux à afficher:", newReports.length);
-    // Utiliser un JSON.stringify pour comparer si les données ont réellement changé
-    // avant de mettre à jour l'état pour éviter les rendus inutiles
-    const currentReportsJson = JSON.stringify(reports.map(r => r.id));
-    const newReportsJson = JSON.stringify(newReports.map(r => r.id));
-    
-    if (currentReportsJson !== newReportsJson) {
-      setReports(newReports);
-    }
-  }, [foundryId, tabValue, reportsData, isLoading]);
-
-  // Afficher un message de débogage des documents
-  useEffect(() => {
-    console.log("Documents disponibles dans reports:", reports);
-    if (reports.length > 0) {
-      console.log("Structure du premier document:", reports[0]);
-    }
-  }, [reports]);
+    console.log("Rapports finaux à afficher:", reports);
+    setReports(reports);
+  }, [foundryId, tabValue, reportsData]);
 
   // Fonction pour vérifier si une date est dans la plage de filtre
   const isDateInRange = (dateStr) => {
@@ -395,12 +357,6 @@ const ReportsView = ({ foundryId }) => {
 
   // Filtrer les rapports
   const filteredReports = reports.filter(report => {
-    // Ajouter un log pour déboguer
-    if (!report.date) {
-      console.warn("Document sans date trouvé:", report);
-      return false;
-    }
-    
     // Filtre par type
     const matchesType = filterType === 'all' || report.type.toLowerCase() === filterType.toLowerCase();
     
@@ -557,75 +513,72 @@ const ReportsView = ({ foundryId }) => {
         </Alert>
       </Snackbar>
       
-      {/* Affichage persistant des onglets et filtres, même pendant le chargement */}
-      <>
-        {/* Onglets principaux - adaptés selon la présence d'un ID de fonderie */}
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-          <Tabs 
-            value={tabValue} 
-            onChange={handleTabChange}
-            textColor="primary"
-            indicatorColor="primary"
-          >
-            {foundryId ? (
-              // Onglets pour une fonderie spécifique
-              <>
-                <Tab label="Tous les documents" />
-                <Tab label="Spécifiques à cette installation" />
-              </>
-            ) : (
-              // Onglets pour la page principale des rapports
-              <>
-                <Tab label="Tous les documents" />
-                <Tab label="Documents généraux" />
-              </>
-            )}
-          </Tabs>
-        </Box>
+      {/* Onglets principaux - adaptés selon la présence d'un ID de fonderie */}
+      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+        <Tabs 
+          value={tabValue} 
+          onChange={handleTabChange}
+          textColor="primary"
+          indicatorColor="primary"
+        >
+          {foundryId ? (
+            // Onglets pour une fonderie spécifique
+            <>
+              <Tab label="Tous les documents" />
+              <Tab label="Spécifiques à cette installation" />
+            </>
+          ) : (
+            // Onglets pour la page principale des rapports
+            <>
+              <Tab label="Tous les documents" />
+              <Tab label="Documents généraux" />
+            </>
+          )}
+        </Tabs>
+      </Box>
+      
+      {/* Barre de recherche et filtres principaux */}
+      <Box sx={{ mb: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+        <TextField
+          placeholder="Rechercher un document..."
+          size="small"
+          fullWidth
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          InputProps={{
+            startAdornment: (
+              <InputAdornment position="start">
+                <SearchIcon />
+              </InputAdornment>
+            ),
+          }}
+          sx={{ flexGrow: 1 }}
+        />
         
-        {/* Barre de recherche et filtres principaux */}
-        <Box sx={{ mb: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-          <TextField
-            placeholder="Rechercher un document..."
-            size="small"
-            fullWidth
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ flexGrow: 1 }}
-          />
-          
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <InputLabel>Trier par</InputLabel>
-            <Select
-              value={sortOrder}
-              label="Trier par"
-              onChange={(e) => setSortOrder(e.target.value)}
-            >
-              {sortOptions.map(option => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <Button 
-            size="small" 
-            variant="outlined" 
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            endIcon={showAdvancedFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        <FormControl size="small" sx={{ minWidth: 150 }}>
+          <InputLabel>Trier par</InputLabel>
+          <Select
+            value={sortOrder}
+            label="Trier par"
+            onChange={(e) => setSortOrder(e.target.value)}
           >
-            Filtres avancés
-          </Button>
-        </Box>
-      </>
+            {sortOptions.map(option => (
+              <MenuItem key={option.value} value={option.value}>
+                {option.label}
+              </MenuItem>
+            ))}
+          </Select>
+        </FormControl>
+        
+        <Button 
+          size="small" 
+          variant="outlined" 
+          onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+          endIcon={showAdvancedFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+        >
+          Filtres avancés
+        </Button>
+      </Box>
       
       {/* Filtres avancés (visibles uniquement si showAdvancedFilters est vrai) */}
       <Collapse in={showAdvancedFilters}>
@@ -737,356 +690,310 @@ const ReportsView = ({ foundryId }) => {
         </Paper>
       </Collapse>
       
-      {/* Contrôles d'affichage avec indication seulement si données disponibles */}
-      {(!isLoading || filteredReports.length > 0) && (
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
-              {filteredReports.length} document{filteredReports.length > 1 ? 's' : ''} trouvé{filteredReports.length > 1 ? 's' : ''}
-            </Typography>
-            
-            {isAuthenticated && (
-              <Button 
-                variant="outlined" 
-                color="error" 
-                size="small"
-                onClick={() => {
-                  if (window.confirm('Êtes-vous sûr de vouloir supprimer tous les documents par défaut? Cette action est irréversible.')) {
-                    clearAllReports();
-                  }
-                }}
-                sx={{ mr: 2 }}
-              >
-                Supprimer tous les documents par défaut
-              </Button>
-            )}
-          </Box>
+      {/* Indication sur le nombre de résultats et contrôles d'affichage */}
+      <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Box sx={{ display: 'flex', alignItems: 'center' }}>
+          <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
+            {filteredReports.length} document{filteredReports.length > 1 ? 's' : ''} trouvé{filteredReports.length > 1 ? 's' : ''}
+          </Typography>
           
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {/* Contrôles d'affichage */}
-            <Box sx={{ display: 'flex', alignItems: 'center', width: 180 }}>
-              <ZoomOutIcon sx={{ color: 'text.secondary', mr: 1 }} />
-              <Slider
-                size="small"
-                value={cardSize}
-                min={1}
-                max={4}
-                step={1}
-                onChange={handleCardSizeChange}
-                aria-label="Taille d'affichage"
-              />
-              <ZoomInIcon sx={{ color: 'text.secondary', ml: 1 }} />
-            </Box>
-            
-            <ToggleButtonGroup
-              value={viewMode}
-              exclusive
-              onChange={handleViewModeChange}
-              aria-label="Mode d'affichage"
-              size="small"
-            >
-              <ToggleButton value="list" aria-label="Liste simple">
-                <ViewListIcon />
-              </ToggleButton>
-              <ToggleButton value="detail" aria-label="Liste détaillée">
-                <ViewHeadlineIcon />
-              </ToggleButton>
-              <ToggleButton value="grid" aria-label="Grille">
-                <ViewModuleIcon />
-              </ToggleButton>
-              <ToggleButton value="compact" aria-label="Tableau compact">
-                <ViewCompactIcon />
-              </ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
-        </Box>
-      )}
-      
-      {/* Indicateur de chargement */}
-      {isLoading && !loadError && (
-        <Box sx={{ 
-          p: 4, 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          minHeight: '200px'
-        }}>
-          <LoadingIndicator message="Chargement des documents..." />
-        </Box>
-      )}
-      
-      {/* Affichage des erreurs */}
-      {loadError && (
-        <Box sx={{ 
-          p: 3, 
-          textAlign: 'center', 
-          border: '1px solid rgba(255,0,0,0.1)',
-          borderRadius: '8px',
-          backgroundColor: 'rgba(255,0,0,0.05)',
-          mb: 3
-        }}>
-          <Alert severity="error" sx={{ mb: 2 }}>
-            Erreur de chargement des documents: {loadError}
-          </Alert>
           <Button 
-            variant="contained" 
-            onClick={() => loadPublicDocuments(true)}
-            sx={{ mt: 2 }}
+            variant="outlined" 
+            color="error" 
+            size="small"
+            onClick={() => {
+              if (window.confirm('Êtes-vous sûr de vouloir supprimer tous les documents par défaut? Cette action est irréversible.')) {
+                clearAllReports();
+              }
+            }}
+            sx={{ mr: 2 }}
           >
-            Réessayer
+            Supprimer tous les documents par défaut
           </Button>
         </Box>
+        
+        <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+          {/* Contrôle de la taille d'affichage */}
+          <Box sx={{ display: 'flex', alignItems: 'center', width: 180 }}>
+            <ZoomOutIcon sx={{ color: 'text.secondary', mr: 1 }} />
+            <Slider
+              size="small"
+              value={cardSize}
+              min={1}
+              max={4}
+              step={1}
+              onChange={handleCardSizeChange}
+              aria-label="Taille d'affichage"
+            />
+            <ZoomInIcon sx={{ color: 'text.secondary', ml: 1 }} />
+          </Box>
+          
+          {/* Sélecteur de mode d'affichage */}
+          <ToggleButtonGroup
+            value={viewMode}
+            exclusive
+            onChange={handleViewModeChange}
+            aria-label="Mode d'affichage"
+            size="small"
+          >
+            <ToggleButton value="list" aria-label="Liste simple">
+              <ViewListIcon />
+            </ToggleButton>
+            <ToggleButton value="detail" aria-label="Liste détaillée">
+              <ViewHeadlineIcon />
+            </ToggleButton>
+            <ToggleButton value="grid" aria-label="Grille">
+              <ViewModuleIcon />
+            </ToggleButton>
+            <ToggleButton value="compact" aria-label="Tableau compact">
+              <ViewCompactIcon />
+            </ToggleButton>
+          </ToggleButtonGroup>
+        </Box>
+      </Box>
+      
+      {/* Affichage des documents selon le mode sélectionné */}
+      {viewMode === 'grid' && (
+        <Grid container spacing={3}>
+          {filteredReports.length > 0 ? (
+            filteredReports.map(report => (
+              <Grid 
+                item 
+                xs={12} 
+                sm={cardSize <= 2 ? 6 : 12} 
+                md={cardSize === 1 ? 3 : (cardSize === 2 ? 4 : (cardSize === 3 ? 6 : 12))} 
+                key={report.id || `${report.title}-${Math.random()}`}
+              >
+                <ReportCard report={report} onDelete={handleDeleteDocument} />
+              </Grid>
+            ))
+          ) : (
+            <Grid item xs={12}>
+              <Paper sx={{ p: 3, textAlign: 'center' }}>
+                <Typography variant="h6" color="text.secondary">
+                  Aucun document ne correspond à vos critères de recherche.
+                </Typography>
+              </Paper>
+            </Grid>
+          )}
+        </Grid>
       )}
       
-      {/* Affichage du contenu seulement si données disponibles et pas d'erreur */}
-      {!isLoading && !loadError && (
-        <>
-          {filteredReports.length === 0 ? (
+      {viewMode === 'list' && (
+        <List sx={{ bgcolor: 'background.paper', borderRadius: 1 }}>
+          {filteredReports.length > 0 ? (
+            filteredReports.map(report => (
+              <ListItem
+                key={report.id || `${report.title}-${Math.random()}`}
+                divider
+                secondaryAction={
+                  <Box>
+                    <IconButton
+                      edge="end"
+                      component="a"
+                      href={report.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      color="primary"
+                      sx={{ mr: 1 }}
+                    >
+                      <LaunchIcon />
+                    </IconButton>
+                    <IconButton
+                      edge="end"
+                      onClick={() => handleDeleteDocument(report.id)}
+                      color="error"
+                    >
+                      <DeleteIcon />
+                    </IconButton>
+                  </Box>
+                }
+              >
+                <ListItemAvatar>
+                  <Avatar sx={{ bgcolor: 'primary.light' }}>
+                    {getFormatIcon(report.format)}
+                  </Avatar>
+                </ListItemAvatar>
+                <ListItemText
+                  primary={report.title}
+                  secondary={`${new Date(report.date).toLocaleDateString()} • ${report.author}`}
+                />
+              </ListItem>
+            ))
+          ) : (
+            <ListItem>
+              <ListItemText
+                primary={
+                  <Typography variant="h6" color="text.secondary" align="center">
+                    Aucun document ne correspond à vos critères de recherche.
+                  </Typography>
+                }
+              />
+            </ListItem>
+          )}
+        </List>
+      )}
+      
+      {viewMode === 'detail' && (
+        <List sx={{ bgcolor: 'background.paper', borderRadius: 1 }}>
+          {filteredReports.length > 0 ? (
+            filteredReports.map(report => (
+              <Paper 
+                key={report.id || `${report.title}-${Math.random()}`}
+                sx={{ mb: 2, overflow: 'hidden' }}
+                elevation={1}
+              >
+                <ListItem
+                  sx={{ 
+                    py: 2,
+                    borderLeft: '4px solid',
+                    borderColor: `${getTypeColor(report.type)}.main`
+                  }}
+                  secondaryAction={
+                    <Box>
+                      <Button 
+                        variant="outlined" 
+                        size="small"
+                        href={report.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        startIcon={getFormatIcon(report.format)}
+                        sx={{ mr: 1 }}
+                      >
+                        Consulter
+                      </Button>
+                      <Button 
+                        variant="outlined" 
+                        color="error"
+                        size="small"
+                        onClick={() => handleDeleteDocument(report.id)}
+                        startIcon={<DeleteIcon />}
+                      >
+                        Supprimer
+                      </Button>
+                    </Box>
+                  }
+                >
+                  <ListItemAvatar>
+                    <Avatar sx={{ bgcolor: 'primary.light', width: 50, height: 50, mr: 2 }}>
+                      {getFormatIcon(report.format)}
+                    </Avatar>
+                  </ListItemAvatar>
+                  <ListItemText
+                    disableTypography
+                    primary={
+                      <Typography variant="h6" gutterBottom>
+                        {report.title}
+                      </Typography>
+                    }
+                    secondary={
+                      <Box>
+                        <Typography variant="body2" color="text.secondary" gutterBottom>
+                          {new Date(report.date).toLocaleDateString()} • {report.author}
+                        </Typography>
+                        <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
+                          <Chip 
+                            size="small" 
+                            label={report.type} 
+                            color={getTypeColor(report.type)} 
+                            sx={{ fontWeight: 600 }}
+                          />
+                          <Chip 
+                            size="small" 
+                            label={report.format} 
+                            variant="outlined"
+                          />
+                        </Stack>
+                        <Typography variant="body2" color="text.secondary">
+                          {report.description}
+                        </Typography>
+                      </Box>
+                    }
+                  />
+                </ListItem>
+              </Paper>
+            ))
+          ) : (
             <Paper sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="h6" color="text.secondary">
                 Aucun document ne correspond à vos critères de recherche.
               </Typography>
-              <Typography variant="body2" color="text.secondary" sx={{ mt: 1 }}>
-                Essayez de modifier vos filtres ou d'élargir votre recherche.
-              </Typography>
             </Paper>
-          ) : (
-            <>
-              {viewMode === 'grid' && (
-                <Grid container spacing={3}>
-                  {filteredReports.map(report => (
-                    <Grid 
-                      item 
-                      xs={12} 
-                      sm={cardSize <= 2 ? 6 : 12} 
-                      md={cardSize === 1 ? 3 : (cardSize === 2 ? 4 : (cardSize === 3 ? 6 : 12))} 
-                      key={report.id || `${report.title}-${Math.random()}`}
-                    >
-                      <ReportCard report={report} onDelete={handleDeleteDocument} />
-                    </Grid>
-                  ))}
-                </Grid>
-              )}
-              
-              {viewMode === 'list' && (
-                <List sx={{ bgcolor: 'background.paper', borderRadius: 1 }}>
-                  {filteredReports.length > 0 ? (
-                    filteredReports.map(report => (
-                      <ListItem
-                        key={report.id || `${report.title}-${Math.random()}`}
-                        divider
-                        secondaryAction={
-                          <Box>
-                            <IconButton
-                              edge="end"
-                              component="a"
-                              href={report.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              color="primary"
-                              sx={{ mr: 1 }}
-                            >
-                              <LaunchIcon />
-                            </IconButton>
-                            <IconButton
-                              edge="end"
-                              onClick={() => handleDeleteDocument(report.id)}
-                              color="error"
-                            >
-                              <DeleteIcon />
-                            </IconButton>
-                          </Box>
-                        }
-                      >
-                        <ListItemAvatar>
-                          <Avatar sx={{ bgcolor: 'primary.light' }}>
-                            {getFormatIcon(report.format)}
-                          </Avatar>
-                        </ListItemAvatar>
-                        <ListItemText
-                          primary={report.title}
-                          secondary={`${new Date(report.date).toLocaleDateString()} • ${report.author}`}
-                        />
-                      </ListItem>
-                    ))
-                  ) : (
-                    <ListItem>
-                      <ListItemText
-                        primary={
-                          <Typography variant="h6" color="text.secondary" align="center">
-                            Aucun document ne correspond à vos critères de recherche.
-                          </Typography>
-                        }
-                      />
-                    </ListItem>
-                  )}
-                </List>
-              )}
-              
-              {viewMode === 'detail' && (
-                <List sx={{ bgcolor: 'background.paper', borderRadius: 1 }}>
-                  {filteredReports.length > 0 ? (
-                    filteredReports.map(report => (
-                      <Paper 
-                        key={report.id || `${report.title}-${Math.random()}`}
-                        sx={{ mb: 2, overflow: 'hidden' }}
-                        elevation={1}
-                      >
-                        <ListItem
-                          sx={{ 
-                            py: 2,
-                            borderLeft: '4px solid',
-                            borderColor: `${getTypeColor(report.type)}.main`
-                          }}
-                          secondaryAction={
-                            <Box>
-                              <Button 
-                                variant="outlined" 
-                                size="small"
-                                href={report.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                startIcon={getFormatIcon(report.format)}
-                                sx={{ mr: 1 }}
-                              >
-                                Consulter
-                              </Button>
-                              <Button 
-                                variant="outlined" 
-                                color="error"
-                                size="small"
-                                onClick={() => handleDeleteDocument(report.id)}
-                                startIcon={<DeleteIcon />}
-                              >
-                                Supprimer
-                              </Button>
-                            </Box>
-                          }
-                        >
-                          <ListItemAvatar>
-                            <Avatar sx={{ bgcolor: 'primary.light', width: 50, height: 50, mr: 2 }}>
-                              {getFormatIcon(report.format)}
-                            </Avatar>
-                          </ListItemAvatar>
-                          <ListItemText
-                            disableTypography
-                            primary={
-                              <Typography variant="h6" gutterBottom>
-                                {report.title}
-                              </Typography>
-                            }
-                            secondary={
-                              <Box>
-                                <Typography variant="body2" color="text.secondary" gutterBottom>
-                                  {new Date(report.date).toLocaleDateString()} • {report.author}
-                                </Typography>
-                                <Stack direction="row" spacing={1} sx={{ mb: 1 }}>
-                                  <Chip 
-                                    size="small" 
-                                    label={report.type} 
-                                    color={getTypeColor(report.type)} 
-                                    sx={{ fontWeight: 600 }}
-                                  />
-                                  <Chip 
-                                    size="small" 
-                                    label={report.format} 
-                                    variant="outlined"
-                                  />
-                                </Stack>
-                                <Typography variant="body2" color="text.secondary">
-                                  {report.description}
-                                </Typography>
-                              </Box>
-                            }
-                          />
-                        </ListItem>
-                      </Paper>
-                    ))
-                  ) : (
-                    <Paper sx={{ p: 3, textAlign: 'center' }}>
-                      <Typography variant="h6" color="text.secondary">
-                        Aucun document ne correspond à vos critères de recherche.
-                      </Typography>
-                    </Paper>
-                  )}
-                </List>
-              )}
-              
-              {viewMode === 'compact' && (
-                <TableContainer component={Paper} sx={{ mb: 2 }}>
-                  <Table size={cardSize <= 2 ? "small" : "medium"} aria-label="Liste des documents">
-                    <TableHead>
-                      <TableRow>
-                        <TableCell>Format</TableCell>
-                        <TableCell>Titre</TableCell>
-                        <TableCell>Auteur</TableCell>
-                        <TableCell>Type</TableCell>
-                        <TableCell>Date</TableCell>
-                        <TableCell align="right">Actions</TableCell>
-                      </TableRow>
-                    </TableHead>
-                    <TableBody>
-                      {filteredReports.length > 0 ? (
-                        filteredReports.map(report => (
-                          <TableRow
-                            key={report.id || `${report.title}-${Math.random()}`}
-                            sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
-                          >
-                            <TableCell>
-                              <Avatar sx={{ width: 30, height: 30, bgcolor: 'primary.light' }}>
-                                {getFormatIcon(report.format)}
-                              </Avatar>
-                            </TableCell>
-                            <TableCell component="th" scope="row">
-                              {report.title}
-                            </TableCell>
-                            <TableCell>{report.author}</TableCell>
-                            <TableCell>
-                              <Chip 
-                                size="small" 
-                                label={report.type} 
-                                color={getTypeColor(report.type)} 
-                              />
-                            </TableCell>
-                            <TableCell>{new Date(report.date).toLocaleDateString()}</TableCell>
-                            <TableCell align="right">
-                              <IconButton
-                                size="small"
-                                component="a"
-                                href={report.url}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                color="primary"
-                                sx={{ mr: 1 }}
-                              >
-                                <LaunchIcon />
-                              </IconButton>
-                              <IconButton
-                                size="small"
-                                onClick={() => handleDeleteDocument(report.id)}
-                                color="error"
-                              >
-                                <DeleteIcon />
-                              </IconButton>
-                            </TableCell>
-                          </TableRow>
-                        ))
-                      ) : (
-                        <TableRow>
-                          <TableCell colSpan={6} align="center">
-                            <Typography variant="body1" color="text.secondary">
-                              Aucun document ne correspond à vos critères de recherche.
-                            </Typography>
-                          </TableCell>
-                        </TableRow>
-                      )}
-                    </TableBody>
-                  </Table>
-                </TableContainer>
-              )}
-            </>
           )}
-        </>
+        </List>
+      )}
+      
+      {viewMode === 'compact' && (
+        <TableContainer component={Paper} sx={{ mb: 2 }}>
+          <Table size={cardSize <= 2 ? "small" : "medium"} aria-label="Liste des documents">
+            <TableHead>
+              <TableRow>
+                <TableCell>Format</TableCell>
+                <TableCell>Titre</TableCell>
+                <TableCell>Auteur</TableCell>
+                <TableCell>Type</TableCell>
+                <TableCell>Date</TableCell>
+                <TableCell align="right">Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredReports.length > 0 ? (
+                filteredReports.map(report => (
+                  <TableRow
+                    key={report.id || `${report.title}-${Math.random()}`}
+                    sx={{ '&:last-child td, &:last-child th': { border: 0 } }}
+                  >
+                    <TableCell>
+                      <Avatar sx={{ width: 30, height: 30, bgcolor: 'primary.light' }}>
+                        {getFormatIcon(report.format)}
+                      </Avatar>
+                    </TableCell>
+                    <TableCell component="th" scope="row">
+                      {report.title}
+                    </TableCell>
+                    <TableCell>{report.author}</TableCell>
+                    <TableCell>
+                      <Chip 
+                        size="small" 
+                        label={report.type} 
+                        color={getTypeColor(report.type)} 
+                      />
+                    </TableCell>
+                    <TableCell>{new Date(report.date).toLocaleDateString()}</TableCell>
+                    <TableCell align="right">
+                      <IconButton
+                        size="small"
+                        component="a"
+                        href={report.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        color="primary"
+                        sx={{ mr: 1 }}
+                      >
+                        <LaunchIcon />
+                      </IconButton>
+                      <IconButton
+                        size="small"
+                        onClick={() => handleDeleteDocument(report.id)}
+                        color="error"
+                      >
+                        <DeleteIcon />
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                ))
+              ) : (
+                <TableRow>
+                  <TableCell colSpan={6} align="center">
+                    <Typography variant="body1" color="text.secondary">
+                      Aucun document ne correspond à vos critères de recherche.
+                    </Typography>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </TableContainer>
       )}
     </Box>
   );

@@ -557,274 +557,10 @@ const ReportsView = ({ foundryId }) => {
         </Alert>
       </Snackbar>
       
-      {/* Affichage persistant des onglets et filtres, même pendant le chargement */}
-      <>
-        {/* Onglets principaux - adaptés selon la présence d'un ID de fonderie */}
-        <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
-          <Tabs 
-            value={tabValue} 
-            onChange={handleTabChange}
-            textColor="primary"
-            indicatorColor="primary"
-          >
-            {foundryId ? (
-              // Onglets pour une fonderie spécifique
-              <>
-                <Tab label="Tous les documents" />
-                <Tab label="Spécifiques à cette installation" />
-              </>
-            ) : (
-              // Onglets pour la page principale des rapports
-              <>
-                <Tab label="Tous les documents" />
-                <Tab label="Documents généraux" />
-              </>
-            )}
-          </Tabs>
-        </Box>
-        
-        {/* Barre de recherche et filtres principaux */}
-        <Box sx={{ mb: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
-          <TextField
-            placeholder="Rechercher un document..."
-            size="small"
-            fullWidth
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            InputProps={{
-              startAdornment: (
-                <InputAdornment position="start">
-                  <SearchIcon />
-                </InputAdornment>
-              ),
-            }}
-            sx={{ flexGrow: 1 }}
-          />
-          
-          <FormControl size="small" sx={{ minWidth: 150 }}>
-            <InputLabel>Trier par</InputLabel>
-            <Select
-              value={sortOrder}
-              label="Trier par"
-              onChange={(e) => setSortOrder(e.target.value)}
-            >
-              {sortOptions.map(option => (
-                <MenuItem key={option.value} value={option.value}>
-                  {option.label}
-                </MenuItem>
-              ))}
-            </Select>
-          </FormControl>
-          
-          <Button 
-            size="small" 
-            variant="outlined" 
-            onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
-            endIcon={showAdvancedFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-          >
-            Filtres avancés
-          </Button>
-        </Box>
-      </>
-      
-      {/* Filtres avancés (visibles uniquement si showAdvancedFilters est vrai) */}
-      <Collapse in={showAdvancedFilters}>
-        <Paper 
-          elevation={0} 
-          sx={{ 
-            p: 2, 
-            mb: 3, 
-            borderRadius: '8px', 
-            backgroundColor: 'rgba(0, 0, 0, 0.02)'
-          }}
-        >
-          <Grid container spacing={2}>
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Type de document</InputLabel>
-                <Select
-                  value={filterType}
-                  label="Type de document"
-                  onChange={(e) => setFilterType(e.target.value)}
-                >
-                  {filterTypes.map(type => (
-                    <MenuItem key={type.value} value={type.value}>
-                      {type.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Format</InputLabel>
-                <Select
-                  value={filterFormat}
-                  label="Format"
-                  onChange={(e) => setFilterFormat(e.target.value)}
-                >
-                  {formatFilters.map(format => (
-                    <MenuItem key={format.value} value={format.value}>
-                      {format.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            <Grid item xs={12} sm={6} md={3}>
-              <FormControl fullWidth size="small">
-                <InputLabel>Période</InputLabel>
-                <Select
-                  value={dateFilter}
-                  label="Période"
-                  onChange={handleDateFilterChange}
-                >
-                  {dateFilterOptions.map(option => (
-                    <MenuItem key={option.value} value={option.value}>
-                      {option.label}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
-            </Grid>
-            
-            {dateFilter === 'custom' && (
-              <Grid item xs={12} sm={6} md={3}>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  <TextField
-                    size="small"
-                    label="Du"
-                    type="date"
-                    name="start"
-                    value={customDateRange.start}
-                    onChange={handleCustomDateChange}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                  <TextField
-                    size="small"
-                    label="Au"
-                    type="date"
-                    name="end"
-                    value={customDateRange.end}
-                    onChange={handleCustomDateChange}
-                    InputLabelProps={{ shrink: true }}
-                  />
-                </Box>
-              </Grid>
-            )}
-            
-            <Grid item xs={12}>
-              <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
-                <Button 
-                  size="small" 
-                  variant="outlined"
-                  onClick={() => {
-                    setFilterType('all');
-                    setFilterFormat('all');
-                    setDateFilter('all');
-                    setCustomDateRange({ start: '', end: '' });
-                    setSortOrder('newest');
-                    setSearchQuery('');
-                  }}
-                >
-                  Réinitialiser les filtres
-                </Button>
-              </Box>
-            </Grid>
-          </Grid>
-        </Paper>
-      </Collapse>
-      
-      {/* Contrôles d'affichage avec indication seulement si données disponibles */}
-      {(!isLoading || filteredReports.length > 0) && (
-        <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Box sx={{ display: 'flex', alignItems: 'center' }}>
-            <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
-              {filteredReports.length} document{filteredReports.length > 1 ? 's' : ''} trouvé{filteredReports.length > 1 ? 's' : ''}
-            </Typography>
-            
-            {isAuthenticated && (
-              <Button 
-                variant="outlined" 
-                color="error" 
-                size="small"
-                onClick={() => {
-                  if (window.confirm('Êtes-vous sûr de vouloir supprimer tous les documents par défaut? Cette action est irréversible.')) {
-                    clearAllReports();
-                  }
-                }}
-                sx={{ mr: 2 }}
-              >
-                Supprimer tous les documents par défaut
-              </Button>
-            )}
-          </Box>
-          
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-            {/* Contrôles d'affichage */}
-            <Box sx={{ display: 'flex', alignItems: 'center', width: 180 }}>
-              <ZoomOutIcon sx={{ color: 'text.secondary', mr: 1 }} />
-              <Slider
-                size="small"
-                value={cardSize}
-                min={1}
-                max={4}
-                step={1}
-                onChange={handleCardSizeChange}
-                aria-label="Taille d'affichage"
-              />
-              <ZoomInIcon sx={{ color: 'text.secondary', ml: 1 }} />
-            </Box>
-            
-            <ToggleButtonGroup
-              value={viewMode}
-              exclusive
-              onChange={handleViewModeChange}
-              aria-label="Mode d'affichage"
-              size="small"
-            >
-              <ToggleButton value="list" aria-label="Liste simple">
-                <ViewListIcon />
-              </ToggleButton>
-              <ToggleButton value="detail" aria-label="Liste détaillée">
-                <ViewHeadlineIcon />
-              </ToggleButton>
-              <ToggleButton value="grid" aria-label="Grille">
-                <ViewModuleIcon />
-              </ToggleButton>
-              <ToggleButton value="compact" aria-label="Tableau compact">
-                <ViewCompactIcon />
-              </ToggleButton>
-            </ToggleButtonGroup>
-          </Box>
-        </Box>
-      )}
-      
-      {/* Indicateur de chargement */}
-      {isLoading && !loadError && (
-        <Box sx={{ 
-          p: 4, 
-          display: 'flex', 
-          justifyContent: 'center', 
-          alignItems: 'center',
-          minHeight: '200px'
-        }}>
-          <LoadingIndicator message="Chargement des documents..." />
-        </Box>
-      )}
-      
-      {/* Affichage des erreurs */}
-      {loadError && (
-        <Box sx={{ 
-          p: 3, 
-          textAlign: 'center', 
-          border: '1px solid rgba(255,0,0,0.1)',
-          borderRadius: '8px',
-          backgroundColor: 'rgba(255,0,0,0.05)',
-          mb: 3
-        }}>
+      {isLoading ? (
+        <LoadingIndicator message="Chargement des documents..." />
+      ) : loadError ? (
+        <Box sx={{ p: 3, textAlign: 'center' }}>
           <Alert severity="error" sx={{ mb: 2 }}>
             Erreur de chargement des documents: {loadError}
           </Alert>
@@ -836,11 +572,250 @@ const ReportsView = ({ foundryId }) => {
             Réessayer
           </Button>
         </Box>
-      )}
-      
-      {/* Affichage du contenu seulement si données disponibles et pas d'erreur */}
-      {!isLoading && !loadError && (
+      ) : (
         <>
+          {/* Onglets principaux - adaptés selon la présence d'un ID de fonderie */}
+          <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 3 }}>
+            <Tabs 
+              value={tabValue} 
+              onChange={handleTabChange}
+              textColor="primary"
+              indicatorColor="primary"
+            >
+              {foundryId ? (
+                // Onglets pour une fonderie spécifique
+                <>
+                  <Tab label="Tous les documents" />
+                  <Tab label="Spécifiques à cette installation" />
+                </>
+              ) : (
+                // Onglets pour la page principale des rapports
+                <>
+                  <Tab label="Tous les documents" />
+                  <Tab label="Documents généraux" />
+                </>
+              )}
+            </Tabs>
+          </Box>
+          
+          {/* Barre de recherche et filtres principaux */}
+          <Box sx={{ mb: 2, display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2 }}>
+            <TextField
+              placeholder="Rechercher un document..."
+              size="small"
+              fullWidth
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              InputProps={{
+                startAdornment: (
+                  <InputAdornment position="start">
+                    <SearchIcon />
+                  </InputAdornment>
+                ),
+              }}
+              sx={{ flexGrow: 1 }}
+            />
+            
+            <FormControl size="small" sx={{ minWidth: 150 }}>
+              <InputLabel>Trier par</InputLabel>
+              <Select
+                value={sortOrder}
+                label="Trier par"
+                onChange={(e) => setSortOrder(e.target.value)}
+              >
+                {sortOptions.map(option => (
+                  <MenuItem key={option.value} value={option.value}>
+                    {option.label}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+            
+            <Button 
+              size="small" 
+              variant="outlined" 
+              onClick={() => setShowAdvancedFilters(!showAdvancedFilters)}
+              endIcon={showAdvancedFilters ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+            >
+              Filtres avancés
+            </Button>
+          </Box>
+          
+          {/* Filtres avancés (visibles uniquement si showAdvancedFilters est vrai) */}
+          <Collapse in={showAdvancedFilters}>
+            <Paper 
+              elevation={0} 
+              sx={{ 
+                p: 2, 
+                mb: 3, 
+                borderRadius: '8px', 
+                backgroundColor: 'rgba(0, 0, 0, 0.02)'
+              }}
+            >
+              <Grid container spacing={2}>
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Type de document</InputLabel>
+                    <Select
+                      value={filterType}
+                      label="Type de document"
+                      onChange={(e) => setFilterType(e.target.value)}
+                    >
+                      {filterTypes.map(type => (
+                        <MenuItem key={type.value} value={type.value}>
+                          {type.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Format</InputLabel>
+                    <Select
+                      value={filterFormat}
+                      label="Format"
+                      onChange={(e) => setFilterFormat(e.target.value)}
+                    >
+                      {formatFilters.map(format => (
+                        <MenuItem key={format.value} value={format.value}>
+                          {format.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                <Grid item xs={12} sm={6} md={3}>
+                  <FormControl fullWidth size="small">
+                    <InputLabel>Période</InputLabel>
+                    <Select
+                      value={dateFilter}
+                      label="Période"
+                      onChange={handleDateFilterChange}
+                    >
+                      {dateFilterOptions.map(option => (
+                        <MenuItem key={option.value} value={option.value}>
+                          {option.label}
+                        </MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
+                </Grid>
+                
+                {dateFilter === 'custom' && (
+                  <Grid item xs={12} sm={6} md={3}>
+                    <Box sx={{ display: 'flex', gap: 1 }}>
+                      <TextField
+                        size="small"
+                        label="Du"
+                        type="date"
+                        name="start"
+                        value={customDateRange.start}
+                        onChange={handleCustomDateChange}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                      <TextField
+                        size="small"
+                        label="Au"
+                        type="date"
+                        name="end"
+                        value={customDateRange.end}
+                        onChange={handleCustomDateChange}
+                        InputLabelProps={{ shrink: true }}
+                      />
+                    </Box>
+                  </Grid>
+                )}
+                
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', justifyContent: 'flex-end', gap: 1 }}>
+                    <Button 
+                      size="small" 
+                      variant="outlined"
+                      onClick={() => {
+                        setFilterType('all');
+                        setFilterFormat('all');
+                        setDateFilter('all');
+                        setCustomDateRange({ start: '', end: '' });
+                        setSortOrder('newest');
+                        setSearchQuery('');
+                      }}
+                    >
+                      Réinitialiser les filtres
+                    </Button>
+                  </Box>
+                </Grid>
+              </Grid>
+            </Paper>
+          </Collapse>
+          
+          {/* Indication sur le nombre de résultats et contrôles d'affichage */}
+          <Box sx={{ mb: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+              <Typography variant="body2" color="text.secondary" sx={{ mr: 2 }}>
+                {filteredReports.length} document{filteredReports.length > 1 ? 's' : ''} trouvé{filteredReports.length > 1 ? 's' : ''}
+              </Typography>
+              
+              {isAuthenticated && (
+                <Button 
+                  variant="outlined" 
+                  color="error" 
+                  size="small"
+                  onClick={() => {
+                    if (window.confirm('Êtes-vous sûr de vouloir supprimer tous les documents par défaut? Cette action est irréversible.')) {
+                      clearAllReports();
+                    }
+                  }}
+                  sx={{ mr: 2 }}
+                >
+                  Supprimer tous les documents par défaut
+                </Button>
+              )}
+            </Box>
+            
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              {/* Contrôle de la taille d'affichage */}
+              <Box sx={{ display: 'flex', alignItems: 'center', width: 180 }}>
+                <ZoomOutIcon sx={{ color: 'text.secondary', mr: 1 }} />
+                <Slider
+                  size="small"
+                  value={cardSize}
+                  min={1}
+                  max={4}
+                  step={1}
+                  onChange={handleCardSizeChange}
+                  aria-label="Taille d'affichage"
+                />
+                <ZoomInIcon sx={{ color: 'text.secondary', ml: 1 }} />
+              </Box>
+              
+              {/* Sélecteur de mode d'affichage */}
+              <ToggleButtonGroup
+                value={viewMode}
+                exclusive
+                onChange={handleViewModeChange}
+                aria-label="Mode d'affichage"
+                size="small"
+              >
+                <ToggleButton value="list" aria-label="Liste simple">
+                  <ViewListIcon />
+                </ToggleButton>
+                <ToggleButton value="detail" aria-label="Liste détaillée">
+                  <ViewHeadlineIcon />
+                </ToggleButton>
+                <ToggleButton value="grid" aria-label="Grille">
+                  <ViewModuleIcon />
+                </ToggleButton>
+                <ToggleButton value="compact" aria-label="Tableau compact">
+                  <ViewCompactIcon />
+                </ToggleButton>
+              </ToggleButtonGroup>
+            </Box>
+          </Box>
+          
+          {/* Affichage des documents selon le mode sélectionné */}
           {filteredReports.length === 0 ? (
             <Paper sx={{ p: 3, textAlign: 'center' }}>
               <Typography variant="h6" color="text.secondary">

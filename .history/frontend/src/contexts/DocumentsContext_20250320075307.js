@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect, useRef } from 'react';
+import React, { createContext, useState, useContext, useEffect } from 'react';
 import { reportsData as initialReportsData } from '../data/reportsData';
 import { supabase } from '../supabase';
 import { useAuth } from './AuthContext';
@@ -33,11 +33,6 @@ export const DocumentsProvider = ({ children }) => {
   const [reportsData, setReportsData] = useState(initialReportsData);
   const { userId, isAuthenticated } = useAuth();
   const [isLoading, setIsLoading] = useState(true);
-  const [loadError, setLoadError] = useState(null);
-  const [retryCount, setRetryCount] = useState(0);
-  const maxRetries = 3;
-  const loadingRef = useRef(false);
-  const documentsLoadedRef = useRef(false); // pour suivre si les documents ont déjà été chargés avec succès
   
   // Fonction pour supprimer tous les rapports par défaut
   const clearAllReports = () => {
@@ -70,76 +65,11 @@ export const DocumentsProvider = ({ children }) => {
   };
   
   // Fonction pour charger tous les documents publics
-  const loadPublicDocuments = async (forceReload = false) => {
-    // Si les documents sont déjà chargés et qu'on ne force pas le rechargement, ne rien faire
-    if (documentsLoadedRef.current && !forceReload) {
-      console.log('Documents déjà chargés, utilisation du cache');
-      setIsLoading(false);
-      return;
-    }
-    
-    // Éviter les appels multiples simultanés
-    if (loadingRef.current && !forceReload) {
-      console.log('Chargement déjà en cours, abandon...');
-      return;
-    }
-    
-    // Si on a déjà essayé plusieurs fois, utiliser les données initiales pour éviter le blocage
-    if (retryCount >= maxRetries) {
-      console.log(`Nombre maximum de tentatives (${maxRetries}) atteint, utilisation des données par défaut`);
-      // Utiliser reportsData (qui contient soit des données chargées soit initialReportsData)
-      setIsLoading(false);
-      return;
-    }
-    
+  const loadPublicDocuments = async () => {
     try {
-      loadingRef.current = true;
       setIsLoading(true);
-      setLoadError(null);
-      console.log('Chargement des documents publics... Tentative', retryCount + 1);
-      
-      // Essayer d'utiliser des données en cache du localStorage si disponibles
-      try {
-        const cachedData = localStorage.getItem('cached_documents');
-        if (cachedData && !forceReload) {
-          const parsedData = JSON.parse(cachedData);
-          const cacheTime = parsedData.timestamp || 0;
-          const currentTime = Date.now();
-          const cacheAge = currentTime - cacheTime;
-          
-          // Si le cache a moins de 30 minutes, l'utiliser
-          if (cacheAge < 30 * 60 * 1000) {
-            console.log('Utilisation des données en cache (moins de 30 minutes)');
-            setReportsData(parsedData.data);
-            setIsLoading(false);
-            loadingRef.current = false;
-            documentsLoadedRef.current = true;
-            return;
-          }
-        }
-      } catch (cacheError) {
-        console.warn('Erreur lors de la lecture du cache:', cacheError);
-        // Continuer normalement si le cache échoue
-      }
-      
-      // Charger les documents depuis Supabase avec un timeout plus long
-      const { data: documents, error } = await Promise.race([
-        supabase
-          .from('documents')
-          .select('*')
-          .order('upload_date', { ascending: false }),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Timeout dépassé')), 15000)
-        )
-      ]);
-      
-      if (error) {
-        throw error;
-      }
-      
-      console.log('Documents publics chargés:', documents?.length || 0);
-      
-      // Structure de données vide (en dehors du try pour que finally puisse y accéder)
+      console.log('Chargement des documents publics...');
+      // Structure de données vide
       const emptyReportsData = {
         general_reports: [],
         foundry_reports: {
@@ -153,85 +83,54 @@ export const DocumentsProvider = ({ children }) => {
         status_colors: initialReportsData.status_colors
       };
       
-      // Préparer une copie des données vides
-      const newData = JSON.parse(JSON.stringify(emptyReportsData));
+      // Charger les documents depuis Supabase sans filtre d'utilisateur
+      const { data: documents, error } = await supabase
+        .from('documents')
+        .select('*')
+        .order('upload_date', { ascending: false });
+      
+      if (error) {
+        throw error;
+      }
+      
+      console.log('Documents publics chargés:', documents?.length || 0);
       
       if (documents && documents.length > 0) {
+        // Préparer une copie des données vides
+        const newData = JSON.parse(JSON.stringify(emptyReportsData));
+        
         // Ajouter les documents à leurs collections respectives
         documents.forEach(doc => {
-          try {
-            // S'assurer que upload_date est défini, sinon utiliser la date actuelle
-            const uploadDate = doc.upload_date || new Date().toISOString();
-            
-            // Convertir le format de Supabase vers notre format interne
-            const document = {
-              id: doc.id,
-              title: doc.title || 'Sans titre',
-              author: doc.author || 'Anonyme',
-              type: doc.type || 'report',
-              format: doc.format || 'pdf',
-              description: doc.description || '',
-              foundryId: doc.foundry_id,
-              url: doc.url || '#',
-              supabasePath: doc.supabase_path,
-              thumbnail: doc.thumbnail || '/images/file-icon.png',
-              uploadDate: uploadDate,
-              date: uploadDate
-            };
-            
-            if (document.foundryId && newData.foundry_reports[document.foundryId]) {
-              newData.foundry_reports[document.foundryId].unshift(document);
-            } else {
-              newData.general_reports.unshift(document);
-            }
-          } catch (docError) {
-            console.error('Erreur lors du traitement d\'un document:', docError);
+          // Convertir le format de Supabase vers notre format interne
+          const document = {
+            id: doc.id,
+            title: doc.title,
+            author: doc.author,
+            type: doc.type,
+            format: doc.format,
+            description: doc.description,
+            foundryId: doc.foundry_id,
+            url: doc.url,
+            supabasePath: doc.supabase_path,
+            thumbnail: doc.thumbnail,
+            uploadDate: doc.upload_date,
+            date: doc.upload_date // Ajout critique: date est utilisée pour le filtrage
+          };
+          
+          if (document.foundryId && newData.foundry_reports[document.foundryId]) {
+            newData.foundry_reports[document.foundryId].unshift(document);
+          } else {
+            newData.general_reports.unshift(document);
           }
         });
+        
+        // Mettre à jour les données avec les documents de Supabase
+        setReportsData(newData);
       }
-      
-      // Mettre à jour les données avec les documents de Supabase
-      setReportsData(newData);
-      
-      // Sauvegarder dans le cache local
-      try {
-        const cacheData = {
-          data: newData,
-          timestamp: Date.now()
-        };
-        localStorage.setItem('cached_documents', JSON.stringify(cacheData));
-      } catch (cacheError) {
-        console.warn('Erreur lors de la sauvegarde du cache:', cacheError);
-      }
-      
-      // Marquer comme chargé avec succès
-      documentsLoadedRef.current = true;
-      setRetryCount(0);
     } catch (error) {
       console.error('Erreur lors du chargement des documents publics:', error);
-      setLoadError(error.message || 'Erreur de chargement');
-      
-      // Incrémenter le compteur de tentatives
-      setRetryCount(prev => prev + 1);
-      
-      // Si nous n'avons pas atteint le nombre maximum de tentatives, réessayer après un délai
-      if (retryCount < maxRetries - 1) {
-        console.log(`Nouvelle tentative dans 5 secondes (${retryCount + 1}/${maxRetries})...`);
-        setTimeout(() => {
-          loadingRef.current = false;
-          loadPublicDocuments(true);
-        }, 5000);
-      } else {
-        console.log('Nombre maximum de tentatives atteint, utilisation des données par défaut.');
-        // Utiliser les données initiales si disponibles
-        documentsLoadedRef.current = true;
-      }
     } finally {
-      // Toujours finir par désactiver le chargement après le temps maximum
-      setTimeout(() => {
-        setIsLoading(false);
-        loadingRef.current = false;
-      }, 1000); // Délai court pour permettre au rendu de se stabiliser
+      setIsLoading(false);
     }
   };
   
@@ -239,11 +138,6 @@ export const DocumentsProvider = ({ children }) => {
   useEffect(() => {
     // Charger tous les documents publics par défaut
     loadPublicDocuments();
-    
-    // Nettoyage
-    return () => {
-      loadingRef.current = false;
-    };
   }, []);
   
   // Fonction pour ajouter un document uploadé
@@ -433,8 +327,7 @@ export const DocumentsProvider = ({ children }) => {
       removeDocument,
       clearAllReports,
       loadPublicDocuments,
-      isLoading,
-      loadError
+      isLoading
     }}>
       {children}
     </DocumentsContext.Provider>
