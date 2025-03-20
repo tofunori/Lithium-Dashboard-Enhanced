@@ -243,10 +243,10 @@ const MapMarkers = ({ plants, settings }) => {
   };
 
   // Trouver la production maximale pour la normalisation
-  // Cette étape n'est plus utilisée dans notre nouvelle approche
-  // Nous laissons les waypoints pour référence future
+  let maxProduction = 0;
   validPlants.forEach(plant => {
-    extractProduction(plant.production);
+    const production = extractProduction(plant.production);
+    if (production > maxProduction) maxProduction = production;
   });
 
   // Sans clustering
@@ -277,26 +277,15 @@ const MapMarkers = ({ plants, settings }) => {
         // Calculer la taille de l'icône en fonction de la production
         const production = extractProduction(plant.production);
         
-        // COMPLÈTEMENT NOUVELLE APPROCHE:
-        // Au lieu de normaliser par rapport au maximum, utiliser des seuils fixes
-        // qui seront beaucoup plus visibles et directs
-        let pointSize = 0;
-        
-        // Échelle de taille absolue
-        if (production <= 10) pointSize = 0.1;       // Très petite production
-        else if (production <= 100) pointSize = 0.2; // Petite production
-        else if (production <= 1000) pointSize = 0.3; // Production modérée
-        else if (production <= 5000) pointSize = 0.4; // Production moyenne
-        else if (production <= 10000) pointSize = 0.5; // Production importante
-        else if (production <= 50000) pointSize = 0.7; // Grande production
-        else if (production <= 100000) pointSize = 0.8; // Très grande production
-        else if (production <= 500000) pointSize = 0.9; // Production majeure
-        else pointSize = 1.0; // Production massive
+        // Utiliser une formule exponentielle plus agressive pour rendre les différences très visibles
+        const sizeFactor = maxProduction > 0 
+          ? 0.8 + (Math.pow(production / maxProduction, 0.4) * 4.0)  // Exposant plus petit et multiplicateur plus grand pour amplifier les différences
+          : 1;
         
         // Debug: afficher la production et le facteur de taille dans la console
-        console.log(`Raffinerie: ${plant.name}, Production: ${plant.production}, Valeur: ${production}, Facteur: ${pointSize.toFixed(2)}`);
+        console.log(`Raffinerie: ${plant.name}, Production: ${plant.production}, Valeur extraite: ${production}, Facteur: ${sizeFactor.toFixed(2)}, Max: ${maxProduction}`);
           
-        const icon = createCustomIcon(color, pointSize);
+        const icon = createCustomIcon(color, sizeFactor);
         
         return (
           <Marker

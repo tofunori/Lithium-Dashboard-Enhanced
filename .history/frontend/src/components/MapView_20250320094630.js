@@ -280,23 +280,23 @@ const MapMarkers = ({ plants, settings }) => {
         // COMPLÈTEMENT NOUVELLE APPROCHE:
         // Au lieu de normaliser par rapport au maximum, utiliser des seuils fixes
         // qui seront beaucoup plus visibles et directs
-        let pointSize = 0;
+        let sizeFactor = 0;
         
         // Échelle de taille absolue
-        if (production <= 10) pointSize = 0.1;       // Très petite production
-        else if (production <= 100) pointSize = 0.2; // Petite production
-        else if (production <= 1000) pointSize = 0.3; // Production modérée
-        else if (production <= 5000) pointSize = 0.4; // Production moyenne
-        else if (production <= 10000) pointSize = 0.5; // Production importante
-        else if (production <= 50000) pointSize = 0.7; // Grande production
-        else if (production <= 100000) pointSize = 0.8; // Très grande production
-        else if (production <= 500000) pointSize = 0.9; // Production majeure
-        else pointSize = 1.0; // Production massive
+        if (production <= 10) sizeFactor = 0.1;       // Très petite production
+        else if (production <= 100) sizeFactor = 0.2; // Petite production
+        else if (production <= 1000) sizeFactor = 0.3; // Production modérée
+        else if (production <= 5000) sizeFactor = 0.4; // Production moyenne
+        else if (production <= 10000) sizeFactor = 0.5; // Production importante
+        else if (production <= 50000) sizeFactor = 0.7; // Grande production
+        else if (production <= 100000) sizeFactor = 0.8; // Très grande production
+        else if (production <= 500000) sizeFactor = 0.9; // Production majeure
+        else sizeFactor = 1.0; // Production massive
         
         // Debug: afficher la production et le facteur de taille dans la console
-        console.log(`Raffinerie: ${plant.name}, Production: ${plant.production}, Valeur: ${production}, Facteur: ${pointSize.toFixed(2)}`);
+        console.log(`Raffinerie: ${plant.name}, Production: ${plant.production}, Valeur: ${production}, Facteur: ${sizeFactor.toFixed(2)}`);
           
-        const icon = createCustomIcon(color, pointSize);
+        const icon = createCustomIcon(color, sizeFactor);
         
         return (
           <Marker

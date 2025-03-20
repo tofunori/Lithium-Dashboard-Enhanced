@@ -72,7 +72,7 @@ const prepareMapData = (refineries) => {
     location: refinery.location,
     latitude: refinery.coordinates[0],
     longitude: refinery.coordinates[1],
-    production: refinery.production,
+    capacity: refinery.production,
     website: refinery.website,
     // Convertir l'état en propriétés pour le composant MapView
     operational: refinery.status === 'Opérationnel',

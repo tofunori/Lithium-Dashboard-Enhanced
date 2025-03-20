@@ -43,7 +43,7 @@ import {
   Pie,
   Cell
 } from 'recharts';
-import OpenLayersMap from './OpenLayersMap';
+import MapLibreView from './MapLibreView';
 import useTranslation from '../hooks/useTranslation';
 import { refineryData } from '../data/refineryData';
 import { useRefineries } from '../contexts/RefineryContext';
@@ -72,7 +72,7 @@ const prepareMapData = (refineries) => {
     location: refinery.location,
     latitude: refinery.coordinates[0],
     longitude: refinery.coordinates[1],
-    production: refinery.production,
+    capacity: refinery.production,
     website: refinery.website,
     // Convertir l'état en propriétés pour le composant MapView
     operational: refinery.status === 'Opérationnel',
@@ -278,7 +278,7 @@ const Dashboard = () => {
             height: `${mapHeight}px`,
             transition: 'height 0.3s ease'
           }}>
-          <OpenLayersMap plants={mapData} onResize={resizeMapHeight} />
+          <MapLibreView plants={mapData} onResize={resizeMapHeight} />
         </Box>
       </Paper>
 

@@ -24,16 +24,13 @@ L.Icon.Default.mergeOptions({
 
 // Définir des icônes personnalisées selon le statut et la production
 const createCustomIcon = (color, size = 1) => {
-  // Utiliser une taille de base plus grande et une échelle non-linéaire
-  // pour rendre les différences beaucoup plus visibles
-  const MIN_SIZE = 16;  // Taille minimum
-  const MAX_SIZE = 48;  // Taille maximum beaucoup plus grande
-  
-  // Calcul non-linéaire de la taille finale
-  const finalSize = Math.round(MIN_SIZE + (MAX_SIZE - MIN_SIZE) * size);
-  const borderWidth = Math.max(2, Math.round(size * 2)); // Bordure plus visible
-  
-  console.log(`Création icône: couleur=${color}, facteur=${size.toFixed(2)}, taille=${finalSize}px`);
+  // Améliorer la visibilité en rendant les points plus grands par défaut
+  // Et en accentuant davantage les différences de taille
+  const baseSize = 22; // Taille de base plus grande
+  const finalSize = Math.round(baseSize * size);
+  const borderWidth = Math.max(2, Math.round(size)); // Bordure proportionnelle à la taille
+
+  console.log(`Création icône: couleur=${color}, tailleFactor=${size}, tailleFinale=${finalSize}px`);
   
   // Utiliser une approche différente avec des divs personnalisés au lieu d'images
   return L.divIcon({
@@ -49,7 +46,7 @@ const createCustomIcon = (color, size = 1) => {
         height: ${finalSize}px;
         border-radius: 50%;
         border: ${borderWidth}px solid white;
-        box-shadow: 0 0 ${Math.round(size * 6)}px rgba(0, 0, 0, 0.7);
+        box-shadow: 0 0 ${Math.round(size * 3)}px rgba(0, 0, 0, 0.5);
         display: flex;
         justify-content: center;
         align-items: center;
@@ -188,65 +185,81 @@ const MapMarkers = ({ plants, settings }) => {
   const extractProduction = (productionString) => {
     if (!productionString || productionString === 'N/A') return 0;
     
-    // Valeur minimum par défaut pour éviter les points de taille zéro
-    let value = 5; 
+    // Afficher la chaîne brute pour le debug
+    console.log(`Analyse de la production: "${productionString}"`);
     
     // Cas spécial pour "1 million de VE" ou expressions avec "million"
     if (productionString.toLowerCase().includes('million')) {
       const matches = productionString.match(/(\d+(?:[\.,]\d+)?)[\s]*million/i);
       if (matches && matches[1]) {
-        value = parseFloat(matches[1].replace(',', '.')) * 1000000;
-      }
-    }
-    // Cas pour les valeurs en GWh
-    else if (productionString.toLowerCase().includes('gwh')) {
-      const matches = productionString.match(/(\d+(?:[\s\.,]\d+)?)/);
-      if (matches && matches[1]) {
-        value = parseFloat(matches[1].replace(/\s/g, '').replace(',', '.')) * 100000;
-      }
-    }
-    // Cas pour les "tonnes par an"
-    else if (productionString.toLowerCase().includes('tonne')) {
-      const matches = productionString.match(/(\d+(?:[\s\.,]\d+)?)/);
-      if (matches && matches[1]) {
-        value = parseFloat(matches[1].replace(/\s/g, '').replace(',', '.'));
-      }
-    }
-    // Autres valeurs numériques
-    else {
-      const matches = productionString.match(/(\d+(?:[\s\.,]\d+)?)/);
-      if (matches && matches[1]) {
-        // Vérifier les plages comme "10 000-20 000"
-        if (matches[1].includes('-')) {
-          const range = matches[1].split('-');
-          if (range.length === 2) {
-            const min = parseFloat(range[0].replace(/\s/g, '').replace(',', '.'));
-            const max = parseFloat(range[1].replace(/\s/g, '').replace(',', '.'));
-            value = (min + max) / 2;
-          }
-        } else {
-          // Nombre simple
-          let numValue = matches[1].replace(/\s/g, '').replace(',', '.');
-          // Gérer les "+"
-          if (numValue.endsWith('+')) {
-            numValue = numValue.substring(0, numValue.length - 1);
-            value = parseFloat(numValue) * 1.1;
-          } else {
-            value = parseFloat(numValue);
-          }
-        }
+        const value = parseFloat(matches[1].replace(',', '.')) * 1000000;
+        console.log(`  → Détecté format 'million': ${value}`);
+        return value;
       }
     }
     
-    console.log(`Production extraite pour "${productionString}": ${value}`);
-    return value;
+    // Cas pour les valeurs en GWh
+    if (productionString.toLowerCase().includes('gwh')) {
+      const matches = productionString.match(/(\d+(?:[\s\.,]\d+)?)/);
+      if (matches && matches[1]) {
+        // Convertir GWh en une valeur proportionnelle pour comparaison
+        const value = parseFloat(matches[1].replace(/\s/g, '').replace(',', '.')) * 100000;
+        console.log(`  → Détecté format 'GWh': ${value}`);
+        return value;
+      }
+    }
+    
+    // Cas pour les "tonnes par an"
+    if (productionString.toLowerCase().includes('tonne')) {
+      const matches = productionString.match(/(\d+(?:[\s\.,]\d+)?)/);
+      if (matches && matches[1]) {
+        const value = parseFloat(matches[1].replace(/\s/g, '').replace(',', '.'));
+        console.log(`  → Détecté format 'tonnes': ${value}`);
+        return value;
+      }
+    }
+    
+    // Valeurs numériques standards (pour autres unités)
+    const matches = productionString.match(/(\d+(?:[\s\.,]\d+)?)/);
+    if (matches && matches[1]) {
+      // Gérer les plages comme "10 000-20 000"
+      if (matches[1].includes('-')) {
+        const range = matches[1].split('-');
+        if (range.length === 2) {
+          // Prendre la moyenne de la plage
+          const min = parseFloat(range[0].replace(/\s/g, '').replace(',', '.'));
+          const max = parseFloat(range[1].replace(/\s/g, '').replace(',', '.'));
+          const value = (min + max) / 2;
+          console.log(`  → Détecté format 'plage': ${value} (${min}-${max})`);
+          return value;
+        }
+      }
+      
+      // Cas normal - nombre simple
+      let value = matches[1].replace(/\s/g, '').replace(',', '.');
+      // Gérer les valeurs avec '+' à la fin comme "10 000+"
+      if (value.endsWith('+')) {
+        value = value.substring(0, value.length - 1);
+        // Ajouter 10% pour donner plus de poids aux valeurs avec '+'
+        const finalValue = parseFloat(value) * 1.1;
+        console.log(`  → Détecté format 'plus': ${finalValue} (${value}+)`);
+        return finalValue;
+      }
+      
+      const finalValue = parseFloat(value);
+      console.log(`  → Détecté format 'nombre standard': ${finalValue}`);
+      return finalValue;
+    }
+    
+    console.log("  → Aucun format détecté, retourne 0");
+    return 0;
   };
 
   // Trouver la production maximale pour la normalisation
-  // Cette étape n'est plus utilisée dans notre nouvelle approche
-  // Nous laissons les waypoints pour référence future
+  let maxProduction = 0;
   validPlants.forEach(plant => {
-    extractProduction(plant.production);
+    const production = extractProduction(plant.production);
+    if (production > maxProduction) maxProduction = production;
   });
 
   // Sans clustering
@@ -277,26 +290,16 @@ const MapMarkers = ({ plants, settings }) => {
         // Calculer la taille de l'icône en fonction de la production
         const production = extractProduction(plant.production);
         
-        // COMPLÈTEMENT NOUVELLE APPROCHE:
-        // Au lieu de normaliser par rapport au maximum, utiliser des seuils fixes
-        // qui seront beaucoup plus visibles et directs
-        let pointSize = 0;
-        
-        // Échelle de taille absolue
-        if (production <= 10) pointSize = 0.1;       // Très petite production
-        else if (production <= 100) pointSize = 0.2; // Petite production
-        else if (production <= 1000) pointSize = 0.3; // Production modérée
-        else if (production <= 5000) pointSize = 0.4; // Production moyenne
-        else if (production <= 10000) pointSize = 0.5; // Production importante
-        else if (production <= 50000) pointSize = 0.7; // Grande production
-        else if (production <= 100000) pointSize = 0.8; // Très grande production
-        else if (production <= 500000) pointSize = 0.9; // Production majeure
-        else pointSize = 1.0; // Production massive
+        // Améliorer l'échelle pour rendre les différences plus visibles
+        // Utiliser une échelle logarithmique pour mieux gérer les grandes différences
+        const sizeFactor = maxProduction > 0 
+          ? 0.7 + (Math.log(production + 1) / Math.log(maxProduction + 1)) * 2.5
+          : 1;
         
         // Debug: afficher la production et le facteur de taille dans la console
-        console.log(`Raffinerie: ${plant.name}, Production: ${plant.production}, Valeur: ${production}, Facteur: ${pointSize.toFixed(2)}`);
+        console.log(`Raffinerie: ${plant.name}, Production: ${plant.production}, Valeur extraite: ${production}, Facteur: ${sizeFactor.toFixed(2)}, Max: ${maxProduction}`);
           
-        const icon = createCustomIcon(color, pointSize);
+        const icon = createCustomIcon(color, sizeFactor);
         
         return (
           <Marker
@@ -390,12 +393,6 @@ const MapView = ({ plants, onResize }) => {
   const [mapHeight, setMapHeight] = useState(800);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [showHeightSlider, setShowHeightSlider] = useState(false);
-  
-  // Utiliser les paramètres du contexte s'ils existent, sinon utiliser les valeurs par défaut
-  const appSettings = settingsContext?.settings || defaultSettings;
-  
-  // Générer une clé unique basée sur les données pour forcer la reconstruction de la carte
-  const mapKey = plants ? `map-${appSettings.mapStyle}-${appSettings.defaultZoom}-${plants.length}-${Date.now()}` : 'map-initial';
 
   // Styles CSS personnalisés pour les marqueurs
   useEffect(() => {
@@ -422,6 +419,9 @@ const MapView = ({ plants, onResize }) => {
       document.head.removeChild(style);
     };
   }, []);
+
+  // Utiliser les paramètres du contexte s'ils existent, sinon utiliser les valeurs par défaut
+  const appSettings = settingsContext?.settings || defaultSettings;
 
   // Centre de la carte (USA par défaut)
   const center = defaultCenter;
@@ -474,33 +474,9 @@ const MapView = ({ plants, onResize }) => {
     if (map) {
       setTimeout(() => {
         map.invalidateSize();
-        console.log("Taille de la carte mise à jour");
       }, 100);
     }
   }, [mapHeight, isFullscreen, map]);
-
-  // Force la mise à jour quand les données des raffineries changent
-  useEffect(() => {
-    if (map && plants) {
-      console.log("Reconstruction complète de la carte due au changement de données");
-      // Forcer une mise à jour complète de la carte
-      map.invalidateSize();
-      // Réinitialiser la vue pour s'assurer que tous les points sont visibles
-      if (plants.length > 0) {
-        const bounds = plants
-          .filter(p => p.latitude && p.longitude)
-          .map(p => [p.latitude, p.longitude]);
-        
-        if (bounds.length > 0) {
-          try {
-            map.fitBounds(bounds);
-          } catch (e) {
-            console.error("Erreur lors du recadrage de la carte:", e);
-          }
-        }
-      }
-    }
-  }, [map, plants]);
 
   // Style du conteneur de carte - ajoutant une classe pour identifier le conteneur
   const mapContainerStyle = {
@@ -619,7 +595,7 @@ const MapView = ({ plants, onResize }) => {
       {/* Utiliser une key pour forcer la remontée lorsque des paramètres importants changent */}
       <Box sx={{ width: '100%', height: `${mapHeight}px`, position: 'relative' }}>
         <MapContainer 
-          key={mapKey}
+          key={`map-${appSettings.mapStyle}-${appSettings.defaultZoom}`}
           center={center} 
           zoom={zoom} 
           style={mapContainerStyle}

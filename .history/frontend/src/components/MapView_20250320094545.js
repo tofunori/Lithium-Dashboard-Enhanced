@@ -24,16 +24,13 @@ L.Icon.Default.mergeOptions({
 
 // Définir des icônes personnalisées selon le statut et la production
 const createCustomIcon = (color, size = 1) => {
-  // Utiliser une taille de base plus grande et une échelle non-linéaire
-  // pour rendre les différences beaucoup plus visibles
-  const MIN_SIZE = 16;  // Taille minimum
-  const MAX_SIZE = 48;  // Taille maximum beaucoup plus grande
-  
-  // Calcul non-linéaire de la taille finale
-  const finalSize = Math.round(MIN_SIZE + (MAX_SIZE - MIN_SIZE) * size);
-  const borderWidth = Math.max(2, Math.round(size * 2)); // Bordure plus visible
-  
-  console.log(`Création icône: couleur=${color}, facteur=${size.toFixed(2)}, taille=${finalSize}px`);
+  // Améliorer la visibilité en rendant les points plus grands par défaut
+  // Et en accentuant davantage les différences de taille
+  const baseSize = 30; // Taille de base beaucoup plus grande (était 22)
+  const finalSize = Math.round(baseSize * size);
+  const borderWidth = Math.max(2, Math.round(size * 1.5)); // Bordure plus visible
+
+  console.log(`Création icône: couleur=${color}, tailleFactor=${size}, tailleFinale=${finalSize}px`);
   
   // Utiliser une approche différente avec des divs personnalisés au lieu d'images
   return L.divIcon({
@@ -49,7 +46,7 @@ const createCustomIcon = (color, size = 1) => {
         height: ${finalSize}px;
         border-radius: 50%;
         border: ${borderWidth}px solid white;
-        box-shadow: 0 0 ${Math.round(size * 6)}px rgba(0, 0, 0, 0.7);
+        box-shadow: 0 0 ${Math.round(size * 5)}px rgba(0, 0, 0, 0.6);
         display: flex;
         justify-content: center;
         align-items: center;
@@ -243,10 +240,10 @@ const MapMarkers = ({ plants, settings }) => {
   };
 
   // Trouver la production maximale pour la normalisation
-  // Cette étape n'est plus utilisée dans notre nouvelle approche
-  // Nous laissons les waypoints pour référence future
+  let maxProduction = 0;
   validPlants.forEach(plant => {
-    extractProduction(plant.production);
+    const production = extractProduction(plant.production);
+    if (production > maxProduction) maxProduction = production;
   });
 
   // Sans clustering
@@ -277,26 +274,15 @@ const MapMarkers = ({ plants, settings }) => {
         // Calculer la taille de l'icône en fonction de la production
         const production = extractProduction(plant.production);
         
-        // COMPLÈTEMENT NOUVELLE APPROCHE:
-        // Au lieu de normaliser par rapport au maximum, utiliser des seuils fixes
-        // qui seront beaucoup plus visibles et directs
-        let pointSize = 0;
-        
-        // Échelle de taille absolue
-        if (production <= 10) pointSize = 0.1;       // Très petite production
-        else if (production <= 100) pointSize = 0.2; // Petite production
-        else if (production <= 1000) pointSize = 0.3; // Production modérée
-        else if (production <= 5000) pointSize = 0.4; // Production moyenne
-        else if (production <= 10000) pointSize = 0.5; // Production importante
-        else if (production <= 50000) pointSize = 0.7; // Grande production
-        else if (production <= 100000) pointSize = 0.8; // Très grande production
-        else if (production <= 500000) pointSize = 0.9; // Production majeure
-        else pointSize = 1.0; // Production massive
+        // Utiliser une formule exponentielle plus agressive pour rendre les différences très visibles
+        const sizeFactor = maxProduction > 0 
+          ? 0.8 + (Math.pow(production / maxProduction, 0.4) * 4.0)  // Exposant plus petit et multiplicateur plus grand pour amplifier les différences
+          : 1;
         
         // Debug: afficher la production et le facteur de taille dans la console
-        console.log(`Raffinerie: ${plant.name}, Production: ${plant.production}, Valeur: ${production}, Facteur: ${pointSize.toFixed(2)}`);
+        console.log(`Raffinerie: ${plant.name}, Production: ${plant.production}, Valeur extraite: ${production}, Facteur: ${sizeFactor.toFixed(2)}, Max: ${maxProduction}`);
           
-        const icon = createCustomIcon(color, pointSize);
+        const icon = createCustomIcon(color, sizeFactor);
         
         return (
           <Marker
