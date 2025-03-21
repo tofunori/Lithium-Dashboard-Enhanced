@@ -20,16 +20,11 @@
     "nom": "Lithion Technologies",
     "proprietaire": "Lithion Recycling",
     "capacite": "10 000-20 000 tonnes de batteries par an",
-    "statut": "Opérationnel",
+    "statut": "Planifié",
     "latitude": 45.5366,
     "longitude": -73.3718,
     "process_type": "Procédé hydrométallurgique en deux étapes",
-    "metadata": {
-      "pays": "Canada",
-      "localisation": "Saint-Bruno-de-Montarville, Québec, Canada",
-      "notes": "Produit de la masse noire, usine d'hydrométallurgie pour matériaux avancés prévue pour 2026.",
-      "site_web": "https://www.lithiontechnologies.com/"
-    }
+    "metadata": {}
   },
   {
     "id": "3",
