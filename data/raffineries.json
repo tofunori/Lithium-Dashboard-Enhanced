@@ -127,16 +127,11 @@
     "nom": "Northvolt",
     "proprietaire": "Northvolt",
     "capacite": "60 GWh par an (prévu)",
-    "statut": "En construction",
+    "statut": "En pause",
     "latitude": 45.5333,
     "longitude": -73.2833,
     "process_type": "Hydrométallurgie",
-    "metadata": {
-      "pays": "Canada",
-      "localisation": "Saint-Basile-le-Grand, Québec, Canada",
-      "notes": "Prévu pour produire pCAM et CAM à partir de batteries recyclées, opérationnel fin 2026.",
-      "site_web": "https://northvolt.com/"
-    }
+    "metadata": {}
   },
   {
     "id": "10",
