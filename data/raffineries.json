@@ -1,0 +1,307 @@
+[
+  {
+    "id": "1",
+    "nom": "Li-Cycle",
+    "proprietaire": "Li-Cycle Corp",
+    "capacite": "10 000+ tonnes de masse noire par an",
+    "statut": "Opérationnel",
+    "latitude": 44.2312,
+    "longitude": -76.486,
+    "process_type": "Spoke & Hub Technologies - Procédé hydrométallurgique",
+    "metadata": {
+      "pays": "Canada",
+      "localisation": "Kingston, Ontario, Canada",
+      "notes": "Produit de la masse noire à partir de batteries lithium-ion usagées, hub aux États-Unis en pause.",
+      "site_web": "https://li-cycle.com/"
+    },
+    "test_field": "test-1742584887195"
+  },
+  {
+    "id": "2",
+    "nom": "Lithion Technologies",
+    "proprietaire": "Lithion Recycling",
+    "capacite": "10 000-20 000 tonnes de batteries par an",
+    "statut": "Opérationnel",
+    "latitude": 45.5366,
+    "longitude": -73.3718,
+    "process_type": "Procédé hydrométallurgique en deux étapes",
+    "metadata": {
+      "pays": "Canada",
+      "localisation": "Saint-Bruno-de-Montarville, Québec, Canada",
+      "notes": "Produit de la masse noire, usine d'hydrométallurgie pour matériaux avancés prévue pour 2026.",
+      "site_web": "https://www.lithiontechnologies.com/"
+    }
+  },
+  {
+    "id": "3",
+    "nom": "Li-Cycle (Arizona)",
+    "proprietaire": "Li-Cycle Corp",
+    "capacite": "N/A",
+    "statut": "Opérationnel",
+    "latitude": 33.3528,
+    "longitude": -111.789,
+    "process_type": "Spoke & Hub Technologies - Procédé hydrométallurgique 'Generation 3'",
+    "metadata": {
+      "pays": "États-Unis",
+      "localisation": "Gilbert, AZ, États-Unis",
+      "notes": "Produit de la masse noire à partir de batteries EV complètes sans démontage.",
+      "site_web": "https://li-cycle.com/"
+    }
+  },
+  {
+    "id": "4",
+    "nom": "Li-Cycle (Alabama)",
+    "proprietaire": "Li-Cycle Corp",
+    "capacite": "N/A",
+    "statut": "Opérationnel",
+    "latitude": 33.2098,
+    "longitude": -87.5692,
+    "process_type": "Spoke & Hub Technologies - Procédé hydrométallurgique 'Generation 3'",
+    "metadata": {
+      "pays": "États-Unis",
+      "localisation": "Tuscaloosa, AL, États-Unis",
+      "notes": "Produit de la masse noire à partir de batteries EV complètes sans démontage.",
+      "site_web": "https://li-cycle.com/"
+    }
+  },
+  {
+    "id": "5",
+    "nom": "Cirba Solutions (Ohio)",
+    "proprietaire": "Cirba Solutions",
+    "capacite": "N/A",
+    "statut": "Opérationnel",
+    "latitude": 39.7134,
+    "longitude": -82.5441,
+    "process_type": "Procédé hydrométallurgique",
+    "metadata": {
+      "pays": "États-Unis",
+      "localisation": "Lancaster, OH, États-Unis",
+      "notes": "Produit de la masse noire à partir de batteries lithium-ion en fin de vie, envoyée pour traitement avancé.",
+      "site_web": "https://www.cirbasolutions.com/"
+    }
+  },
+  {
+    "id": "6",
+    "nom": "Cirba Solutions (Columbia)",
+    "proprietaire": "Cirba Solutions",
+    "capacite": "N/A",
+    "statut": "Opérationnel",
+    "latitude": 34.0007,
+    "longitude": -81.0348,
+    "process_type": "Procédé hydrométallurgique",
+    "metadata": {
+      "pays": "États-Unis",
+      "localisation": "Columbia, SC, États-Unis",
+      "notes": "Produit de la masse noire, partie d'un réseau de traitement plus large.",
+      "site_web": "https://www.cirbasolutions.com/"
+    }
+  },
+  {
+    "id": "7",
+    "nom": "Cirba Solutions (Trail)",
+    "proprietaire": "Cirba Solutions",
+    "capacite": "N/A",
+    "statut": "Opérationnel",
+    "latitude": 49.0996,
+    "longitude": -117.7118,
+    "process_type": "Hydrométallurgie",
+    "metadata": {
+      "pays": "Canada",
+      "localisation": "Trail, Colombie-Britannique, Canada",
+      "notes": "Traite les batteries lithium-ion pour produire des sels de lithium et des 'cakes' de cobalt, récupérant jusqu'à 95 % des métaux critiques.",
+      "site_web": "https://www.cirbasolutions.com/"
+    }
+  },
+  {
+    "id": "8",
+    "nom": "Umicore",
+    "proprietaire": "Umicore",
+    "capacite": "Capacité prévue pour 1 million de VE par an",
+    "statut": "En pause",
+    "latitude": 44.2333,
+    "longitude": -76.9667,
+    "process_type": "Hydrométallurgie",
+    "metadata": {
+      "pays": "Canada",
+      "localisation": "Loyalist, Ontario, Canada",
+      "notes": "Production de pCAM et CAM prévue, construction en pause depuis novembre 2024.",
+      "site_web": "https://www.umicore.ca/en/"
+    }
+  },
+  {
+    "id": "9",
+    "nom": "Northvolt",
+    "proprietaire": "Northvolt",
+    "capacite": "60 GWh par an (prévu)",
+    "statut": "En construction",
+    "latitude": 45.5333,
+    "longitude": -73.2833,
+    "process_type": "Hydrométallurgie",
+    "metadata": {
+      "pays": "Canada",
+      "localisation": "Saint-Basile-le-Grand, Québec, Canada",
+      "notes": "Prévu pour produire pCAM et CAM à partir de batteries recyclées, opérationnel fin 2026.",
+      "site_web": "https://northvolt.com/"
+    }
+  },
+  {
+    "id": "10",
+    "nom": "EVSX",
+    "proprietaire": "St-Georges Eco-Mining",
+    "capacite": "N/A",
+    "statut": "En construction",
+    "latitude": 43.0867,
+    "longitude": -79.206,
+    "process_type": "Hydrométallurgie",
+    "metadata": {
+      "pays": "Canada",
+      "localisation": "Thorold, Ontario, Canada",
+      "notes": "Focus sur les batteries à haute teneur en nickel, pas encore opérationnelle.",
+      "site_web": "https://stgeorgesecomining.com/evsx/"
+    }
+  },
+  {
+    "id": "11",
+    "nom": "Electra Battery Materials",
+    "proprietaire": "Electra Battery Materials",
+    "capacite": "N/A",
+    "statut": "Planifié",
+    "latitude": 47.5066,
+    "longitude": -79.6653,
+    "process_type": "Hydrométallurgie",
+    "metadata": {
+      "pays": "Canada",
+      "localisation": "Temiskaming Shores, Ontario, Canada",
+      "notes": "Focus sur matériaux à base de cobalt des batteries lithium-ion, pas encore en construction.",
+      "site_web": "https://electrabmc.com/"
+    }
+  },
+  {
+    "id": "12",
+    "nom": "Ascend Elements Apex 1",
+    "proprietaire": "Ascend Elements",
+    "capacite": "750 000 VE par an (prévu)",
+    "statut": "En construction",
+    "latitude": 36.7887,
+    "longitude": -87.3857,
+    "process_type": "Hydro-to-Cathode™",
+    "metadata": {
+      "pays": "États-Unis",
+      "localisation": "Hopkinsville, KY, États-Unis",
+      "notes": "Produit pCAM et CAM à partir de batteries recyclées, démarrage prévu fin 2025.",
+      "site_web": "https://ascendelements.com/"
+    }
+  },
+  {
+    "id": "13",
+    "nom": "Ascend Elements Base 1",
+    "proprietaire": "Ascend Elements",
+    "capacite": "N/A",
+    "statut": "Opérationnel",
+    "latitude": 33.5968,
+    "longitude": -83.8602,
+    "process_type": "Hydro-to-Cathode™",
+    "metadata": {
+      "pays": "États-Unis",
+      "localisation": "Covington, GA, États-Unis",
+      "notes": "Produit pCAM à partir de batteries recyclées, usine pilote.",
+      "site_web": "https://ascendelements.com/"
+    }
+  },
+  {
+    "id": "14",
+    "nom": "Green Li-ion GLMC 1",
+    "proprietaire": "Green Li-ion",
+    "capacite": "600-1 100 tonnes de pCAM par an",
+    "statut": "Opérationnel",
+    "latitude": 34.4066,
+    "longitude": -96.1039,
+    "process_type": "GREEN HYDROREJUVENATION™",
+    "metadata": {
+      "pays": "États-Unis",
+      "localisation": "Atoka, OK, États-Unis",
+      "notes": "Première usine en Amérique du Nord à produire pCAM directement à partir de masse noire.",
+      "site_web": "https://www.greenli-ion.com/"
+    }
+  },
+  {
+    "id": "15",
+    "nom": "Redwood Materials (Nevada)",
+    "proprietaire": "Redwood Materials",
+    "capacite": "1 million de VE par an (prévu)",
+    "statut": "Opérationnel",
+    "latitude": 39.5442,
+    "longitude": -119.431,
+    "process_type": "Hydrométallurgie",
+    "metadata": {
+      "pays": "États-Unis",
+      "localisation": "Storey County, NV, États-Unis",
+      "notes": "Produit CAM à partir de batteries recyclées, en expansion.",
+      "site_web": "https://www.redwoodmaterials.com/"
+    }
+  },
+  {
+    "id": "16",
+    "nom": "Redwood Materials (South Carolina)",
+    "proprietaire": "Redwood Materials",
+    "capacite": "N/A",
+    "statut": "En construction",
+    "latitude": 33.151,
+    "longitude": -80.2533,
+    "process_type": "Hydrométallurgie",
+    "metadata": {
+      "pays": "États-Unis",
+      "localisation": "Ridgeville, SC, États-Unis",
+      "notes": "Prévue pour produire CAM, pas encore opérationnelle.",
+      "site_web": "https://www.redwoodmaterials.com/"
+    }
+  },
+  {
+    "id": "17",
+    "nom": "Tesla Gigafactory",
+    "proprietaire": "Tesla",
+    "capacite": "N/A",
+    "statut": "Opérationnel",
+    "latitude": 39.538,
+    "longitude": -119.443,
+    "process_type": "Hydrométallurgie (procédé interne)",
+    "metadata": {
+      "pays": "États-Unis",
+      "localisation": "Sparks, NV, États-Unis",
+      "notes": "Recyclage interne de batteries usagées et rebuts, récupération de 92 % des matériaux.",
+      "site_web": "https://www.tesla.com/gigafactory"
+    }
+  },
+  {
+    "id": "18",
+    "nom": "American Battery Technology",
+    "proprietaire": "ABTC",
+    "capacite": "N/A",
+    "statut": "En construction",
+    "latitude": 39.5296,
+    "longitude": -119.8138,
+    "process_type": "Hydrométallurgie",
+    "metadata": {
+      "pays": "États-Unis",
+      "localisation": "Reno, NV, États-Unis",
+      "notes": "Prévue pour traiter les batteries lithium-ion, pas encore opérationnelle.",
+      "site_web": "https://americanbatterytechnology.com/"
+    }
+  },
+  {
+    "id": "19",
+    "nom": "Li-Cycle (Rochester)",
+    "proprietaire": "Li-Cycle Corp",
+    "capacite": "N/A",
+    "statut": "En pause",
+    "latitude": 43.1566,
+    "longitude": -77.6088,
+    "process_type": "Spoke & Hub Technologies - Procédé hydrométallurgique",
+    "metadata": {
+      "pays": "États-Unis",
+      "localisation": "Rochester, NY, États-Unis",
+      "notes": "Prévu pour produire des matériaux comme le carbonate de lithium, en pause depuis octobre 2023.",
+      "site_web": "https://li-cycle.com/"
+    }
+  }
+]
