@@ -250,16 +250,11 @@
     "nom": "Tesla Gigafactory",
     "proprietaire": "Tesla",
     "capacite": "N/A",
-    "statut": "Opérationnel",
+    "statut": "En construction",
     "latitude": 39.538,
     "longitude": -119.443,
     "process_type": "Hydrométallurgie (procédé interne)",
-    "metadata": {
-      "pays": "États-Unis",
-      "localisation": "Sparks, NV, États-Unis",
-      "notes": "Recyclage interne de batteries usagées et rebuts, récupération de 92 % des matériaux.",
-      "site_web": "https://www.tesla.com/gigafactory"
-    }
+    "metadata": {}
   },
   {
     "id": "18",
